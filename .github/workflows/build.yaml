@@ -59,7 +59,7 @@ jobs:
           docker push "$ref"
           docker image inspect "$ref" --format '{{range .RepoDigests}}{{println .}}{{end}}' | grep -F "$repo@sha256:" | head -1 > digest-${ARCH}.txt
           test -s digest-${ARCH}.txt
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
         with:
           name: digest-${{ matrix.arch }}
