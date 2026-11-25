@@ -4,7 +4,7 @@ A self-hosted recursive DNS resolver based on Unbound and Debian slim. No public
 recursive forwarder is used. The default deployment is private, not a public
 DNS service. DNSSEC authenticates signed DNS data; it does not encrypt recursion.
 
-**Status: 0.1.0-dev6 — portable interactive test revision, not production-qualified.**
+**Status: 0.1.0-dev7 — Debian updates and reviewed vulnerability policy, not production-qualified.**
 Previous snapshot passed macOS M1 and GHCR tests. This revision retains recovery
 and supply-chain controls and replaces Python tooling with Perl; live CI and host qualification remain required. DoH,
 DoT, authentication, per-client monitoring and automated blocking remain planned.
@@ -72,7 +72,7 @@ The registry is `ghcr.io/m-m-m-m/unbound-recursive`. The workflow builds nativel
 for amd64/arm64, tests each platform image and assembles a manifest from their
 published digests. Daily builds refresh Debian packages; they do not update
 production automatically. Review CI, scan results and pin the approved manifest
-digest before deploying. Direct GitHub Actions are SHA-pinned; Trivy, SBOM, provenance and Cosign
+digest before deploying. The [vulnerability policy](security/README.md) blocks fixable HIGH/CRITICAL and unapproved CRITICAL findings; unfixed HIGH findings warn by default. Direct GitHub Actions are SHA-pinned; Trivy, SBOM, provenance and Cosign
 checks are configured. The base image tag remains mutable and must be reviewed
 and pinned before production. See [supply-chain security](docs/SUPPLY-CHAIN.md).
 The development workflow may publish test snapshots only; do not treat `latest`

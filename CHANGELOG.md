@@ -7,6 +7,17 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 
 ## [Unreleased]
 
+### Changed (dev7)
+
+- Upgrade installed Debian packages before installing resolver dependencies.
+- Keep full Trivy findings; block fixable HIGH/CRITICAL and unapproved CRITICAL;
+  warn on unfixed HIGH by default, with an optional stricter policy.
+- Add exact, expiring Debian package exceptions (empty by default), unique-ID
+  and package finding counts, GitHub step summaries and package inventories.
+- Extend core Perl TAP tests and document the dev6 qualification and CI gate.
+  No vulnerability is individually waived in this snapshot.
+
+
 ### Fixed (dev6)
 
 - Wait for the interactive prompt before sending test confirmations and keep

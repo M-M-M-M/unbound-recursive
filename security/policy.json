@@ -1,0 +1,5 @@
+{
+  "schema_version": 1,
+  "unfixed_high": "warn",
+  "max_exception_days": 90
+}

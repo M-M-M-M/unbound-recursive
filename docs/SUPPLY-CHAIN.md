@@ -7,11 +7,15 @@ required before a release. No new scanner or signing tool runs inside Unbound.
 
 Both native architectures are built and tested before scanning. Trivy 0.70.0
 produces a JSON vulnerability report and a CycloneDX SBOM for each local image.
-The initial conservative gate blocks **all HIGH and CRITICAL** findings,
-including unfixed findings, and rejects missing/invalid reports. Do not bypass
-this policy to get a green build. Review Debian advisories and scanner false
-positives; any future exception must be narrowly scoped, justified, approved,
-time-limited and recorded. MEDIUM and LOW findings remain in the full report.
+Dev7 applies the [reviewed vulnerability policy](../security/README.md).
+HIGH/CRITICAL with an available fix block; unfixed CRITICAL blocks unless an
+exact, time-limited, reviewed exception applies. Unfixed HIGH warns by default
+(configurable to block). No exceptions are approved in this snapshot. Missing
+or invalid reports/policies block; LOW/MEDIUM remain informational and UNKNOWN
+warns. Do not treat an accepted scan as a production release approval. The
+Dockerfile upgrades installed Debian packages before installing dependencies.
+The full Trivy JSON, SBOM and dpkg package inventory are retained as evidence;
+the gate adds a GitHub step summary. The re-scan uses the same policy.
 The evidence artifacts expire after 30 days; retain approved release evidence
 in the protected operator archive. Tool and database availability failures are
 build failures. The database is refreshed normally; CI cache is disabled.

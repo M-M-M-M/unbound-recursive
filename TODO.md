@@ -7,14 +7,14 @@ Once action is done, remove the priority number.
 
 ## 0.1.0 — security-first release gates
 
-- [ ] Review full host hardening reference when supplied; record exceptions and approvals. 0️⃣
-- [ ] Review pinned Actions and transitive installers; pin approved base image digest and define controlled refresh. 1️⃣
+- [ ] Review remaining CRITICAL findings against Debian advisories and exact installed versions; patch, remove dependency, or explicitly approve a narrow exception. 0️⃣
+- [ ] Review full host hardening reference, pinned Actions and transitive installers; pin approved base image digest and define controlled refresh. 1️⃣
 - [ ] Qualify configured Trivy gate, per-platform SBOM attestations, signed manifest and provenance; verify on pull and test scheduled re-scan. 2️⃣
-- [ ] Re-qualify dev6 on macOS M1, both CI architectures and Linux amd64 production-like host; verify signed GHCR publication. 3️⃣
+- [ ] Qualify dev7 on macOS M1, both CI architectures and Linux amd64 production-like host; verify signed GHCR publication. 3️⃣
 - [ ] Verify non-root effective privileges, protected deployment paths, SELinux, resource limits, firewall and Docker routes. 4️⃣
 - [ ] Verify first-start state permissions, trust anchor persistence/rollover and restart. 5️⃣
 - [ ] Probe IPv4/IPv6 exposure and unauthorized isolated lab clients; check source-IP NAT behavior. 6️⃣
-- [ ] Qualify dev6 recovery after total purge using make test-state; verify permissions and timing, digest-based deployment and rollback. 7️⃣
+- [ ] Audit installed package inventory and dependency reduction opportunities; qualify digest-based deployment and rollback. 7️⃣
 - [ ] Qualify least-privilege stats-only collection or obtain explicit approval for administrative socket access; test Telegraf and Grafana. 8️⃣
 - [ ] Add deterministic DNSSEC-negative fixture and bounded resource/load tests. 9️⃣
 - [ ] Record all acceptance evidence and approve release before any production deployment. 🔟
@@ -35,8 +35,11 @@ Once action is done, remove the priority number.
 - [x] Separate safe cleanup and confirmed purge; add DNSSEC state backup/restore tooling and document operational impact (previous snapshot: backup, clean, purge and stopped-container restore passed on M1).
 - [x] Extend runtime hardening assertions in integration tests (passed on previous snapshot on M1).
 - [x] Previous snapshot: native M1 build/integration, GHCR amd64/arm64 publication and ARM64 image execution validated by operator.
-- [x] Correct absent-container restoration, verify persisted SHA-512 and add isolated live recovery test (live execution pending).
+- [x] Correct absent-container restoration, verify persisted SHA-512 and add isolated live recovery test (dev6 live execution passed on M1 and CI).
 - [x] Configure SHA-pinned workflow, Trivy, SBOM/provenance attestations, Cosign signature and daily re-scan (CI qualification pending).
-- [x] Convert Python tooling to core Perl and TAP tests; wire prove into Make and CI (offline tests passed; live and macOS PTY qualification pending).
+- [x] Convert Python tooling to core Perl and TAP tests; wire prove into Make and CI (dev6 tests passed on M1 and CI).
 
-- [x] Synchronize test confirmation with the actual PTY prompt and keep stdin open; add delayed/split prompt regression tests (Linux offline validated; macOS re-test pending).
+- [x] Synchronize test confirmation with the actual PTY prompt and keep stdin open; add delayed/split prompt regression tests (Linux and macOS validated).
+
+- [x] Record dev6 operator qualification: 47 offline assertions and 18 live recovery assertions passed on macOS M1; both CI architectures reached the CVE gate.
+- [x] Upgrade base Debian packages at build time; add per-platform package inventory and configurable CVE gate with exact expiring exceptions, summary and Perl regression tests (dev7; live CI pending).

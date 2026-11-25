@@ -113,3 +113,30 @@ state.sh is unchanged. Offline tests passed under Linux with util-linux
 script. Re-run `prove -v tests/*.t` and `make test-state` on macOS to qualify
 the BSD implementation and actual recovery. CI and Linux production-like
 qualification are still pending.
+
+## dev6 operator and CI evidence / dev7 gate
+
+Operator report: 47 offline assertions and 18 live state recovery assertions
+passed on macOS M1. The GitHub Actions log export for run 123680798438 shows
+both native jobs reaching the CVE gate after tests and scan. Each image had
+86 HIGH/CRITICAL package findings (82 HIGH, 4 CRITICAL). The gate blocked
+promotion. The four CRITICAL findings were CVE-2019-16224, CVE-2019-16225 and
+CVE-2019-16227 in liblmdb0 and CVE-2026-6653 in libxml2. The reported fix for
+CVE-2026-124851 in libzstd1 was 1.5.7+dfsg-1+deb13u1. These are historical
+scanner observations, not a current exploitability assessment.
+
+Dev7 upgrades existing Debian packages, captures an installed package inventory,
+and evaluates the full report using the documented policy and empty exception
+register. The previous findings would still block on the four unapproved
+CRITICAL findings, plus any fixable HIGH/CRITICAL still present. No CVE is
+approved by this change. Run `make test-unit`, rebuild and run `make test` and
+`make test-state`; inspect both CI summaries and evidence artifacts. Verify
+whether the available libzstd1 fix is installed and re-evaluate all remaining
+critical findings. Signing and promotion remain gated. Keep the previous
+approved digest until the new one is qualified.
+
+The dev7 dependency audit retains Unbound, dns-root-data, bind9-dnsutils (dig
+is used by the healthcheck and integration tests), and ca-certificates. Do not
+remove transitive packages blindly; review the package inventory, Debian
+package dependency graph and runtime tests before any removal. The dev7
+archive has not been built with Docker in the preparation environment.
