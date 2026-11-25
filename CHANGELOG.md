@@ -7,6 +7,17 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 
 ## [Unreleased]
 
+### Changed (dev8)
+
+- Replace `bind9-dnsutils` with Debian `ldnsutils` (`drill`) to reduce
+  runtime dependencies; retain the existing CVE gate and empty exception register.
+- Adapt local health and DNSSEC/cache integration probes to drill, with bounded
+  execution time and strict local answer validation.
+- Add installed-package regression guard against BIND, LMDB and libxml2,
+  offline TAP tests for the probe and guard, and CI image-size evidence.
+- Record dev7 CI findings; actual dev8 image dependency closure and CVE results
+  remain to be qualified.
+
 ### Changed (dev7)
 
 - Upgrade installed Debian packages before installing resolver dependencies.

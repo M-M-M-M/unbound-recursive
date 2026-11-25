@@ -44,3 +44,13 @@ this checklist with it before release, document deviations and obtain approval.
 
 See [supply-chain security](SUPPLY-CHAIN.md) for the implemented CI policy and
 verification commands. Review and qualify all new controls before release.
+
+### Runtime dependency minimization (dev8)
+
+Use Debian `ldnsutils` for local DNS diagnostics rather than the BIND client
+stack. Live integration checks the installed package inventory and fails on
+BIND, LMDB or libxml2 packages. Any intentional future addition requires a
+review of its purpose, reachable code, vulnerability exposure and updated
+policy tests. The full Trivy gate remains mandatory; a smaller dependency
+set is not proof of absence of vulnerabilities. Review the per-architecture
+SBOM and image-size evidence before promotion.

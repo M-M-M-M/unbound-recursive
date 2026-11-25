@@ -4,9 +4,11 @@ A self-hosted recursive DNS resolver based on Unbound and Debian slim. No public
 recursive forwarder is used. The default deployment is private, not a public
 DNS service. DNSSEC authenticates signed DNS data; it does not encrypt recursion.
 
-**Status: 0.1.0-dev7 — Debian updates and reviewed vulnerability policy, not production-qualified.**
-Previous snapshot passed macOS M1 and GHCR tests. This revision retains recovery
-and supply-chain controls and replaces Python tooling with Perl; live CI and host qualification remain required. DoH,
+**Status: 0.1.0-dev8 — reduced runtime dependencies, not production-qualified.**
+Dev6 passed macOS M1 recovery tests; dev7 CI passed functional tests but was
+blocked by four CRITICAL findings. Dev8 replaces the in-container BIND DNS
+client with LDNS drill, retaining Debian upgrades, the CVE policy and empty
+exception register. Live CI and host qualification remain required. DoH,
 DoT, authentication, per-client monitoring and automated blocking remain planned.
 Hardening is mandatory from 0.1.0; the outstanding supply-chain checks are
 release blockers, not deferred to a later version.
@@ -62,9 +64,10 @@ Backups default to the ignored `backups/` directory for local tests; use an
 approved protected external backup location in production. `make restore-state`
 requires `BACKUP_SET` and explicit confirmation; it can recreate a stopped
 container and volume without starting the resolver. Use `make test-state`
-(Perl and `prove`) to exercise destructive recovery in a disposable Compose project. The healthcheck tests a local
-record, not upstream reachability. The integration script explicitly tests live
-DNSSEC separately.
+(Perl and `prove`) to exercise destructive recovery in a disposable Compose project. The healthcheck uses `drill` from Debian `ldnsutils` to test a local record,
+not upstream reachability. The integration script tests UDP, TCP, live DNSSEC
+and cache behavior and rejects installed BIND, LMDB or libxml2 packages.
+`dig` remains optional on the host; it is not shipped in the image.
 
 ## Deployment and operations
 

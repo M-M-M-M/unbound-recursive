@@ -3,7 +3,7 @@
 set -eu
 # POSIX sh for portability on macOS, Debian and CI.
 ctl() { docker compose exec -T unbound unbound-control -c /etc/unbound/recursive.conf "$@"; }
-dns() { docker compose exec -T unbound dig @127.0.0.1 -p 5353 +time=8 +tries=2 "$@"; }
+dns() { docker compose exec -T unbound timeout -k 2s 25s drill -p 5353 "$@"; }
 fail() { echo "FAIL: $*" >&2; exit 1; }
 id=$(docker compose ps -q unbound)
 [ -n "$id" ] || fail 'service not running'
@@ -35,22 +35,26 @@ for proto in udp tcp; do
     case "$binding" in 127.0.0.1:*) ;; *) fail "unsafe $proto publication: $binding";; esac
     [ "$(printf '%s\n' "$binding" | wc -l | tr -d ' ')" = 1 ] || fail 'multiple bindings'
 done
-dns resolver-health.test. A +short | grep -qx '192.0.2.53' || fail 'local health'
-dns resolver-health.test. A +tcp +short | grep -qx '192.0.2.53' || fail 'TCP health'
+docker compose exec -T unbound /usr/local/bin/healthcheck.sh || fail "local UDP health"
+docker compose exec -T unbound /usr/local/bin/healthcheck.sh --tcp || fail "local TCP health"
+# Reject unexpected BIND, LMDB or XML packages in the actual image.
+packages=$(docker compose exec -T unbound dpkg-query -W -f '${db:Status-Abbrev}\t${binary:Package}\n') || fail "package inventory"
+printf '%s\n' "$packages" | "$(dirname "$0")/package-policy.sh" || fail "runtime dependency policy"
 # Signed root DNSKEY: verifies recursion and validation without a third-party test zone.
-valid=$(dns . DNSKEY +dnssec)
-printf '%s\n' "$valid" | grep -q 'status: NOERROR' || fail 'root resolution'
+valid=$(dns -t -D . @127.0.0.1 DNSKEY)
+printf '%s\n' "$valid" | grep -q '^;; ->>HEADER<<-.*rcode: NOERROR,' || fail 'root resolution'
 printf '%s\n' "$valid" | grep -E '^;; flags:.*[[:space:]]ad([[:space:]]|;)' >/dev/null || fail 'DNSSEC AD flag'
 # Public deliberately broken domain, an external dependency of the test only.
-bogus=$(dns dnssec-failed.org. A +dnssec)
-printf '%s\n' "$bogus" | grep -q 'status: SERVFAIL' || fail 'bogus DNSSEC not rejected'
+bogus=$(dns -D dnssec-failed.org. @127.0.0.1 A)
+printf '%s\n' "$bogus" | grep -q '^;; ->>HEADER<<-.*rcode: SERVFAIL,' || fail 'bogus DNSSEC not rejected'
 # Ensure SERVFAIL really reflects validation rather than missing network/domain.
-dns dnssec-failed.org. A +cdflag | grep -q 'status: NOERROR' || fail 'bogus fixture unavailable with CD'
+cd_reply=$(dns -D -o CD dnssec-failed.org. @127.0.0.1 A)
+printf '%s\n' "$cd_reply" | grep -q '^;; ->>HEADER<<-.*rcode: NOERROR,' || fail 'bogus fixture unavailable with CD'
 ctl status >/dev/null
 before=$(ctl stats_noreset | sed -n 's/^total.num.cachehits=//p')
 [ -n "$before" ] || fail 'cache counter unavailable'
-dns . DNSKEY +dnssec >/dev/null
-dns . DNSKEY +dnssec >/dev/null
+dns -t -D . @127.0.0.1 DNSKEY >/dev/null
+dns -t -D . @127.0.0.1 DNSKEY >/dev/null
 after=$(ctl stats_noreset | sed -n 's/^total.num.cachehits=//p')
 [ "$after" -gt "$before" ] || fail 'cache hits did not increase'
-echo 'PASS: local UDP/TCP, DNSSEC, cache, control, container settings and published ports'
+echo 'PASS: local UDP/TCP, DNSSEC, cache, control, dependency policy, container settings and published ports'

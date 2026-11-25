@@ -7,10 +7,10 @@ Once action is done, remove the priority number.
 
 ## 0.1.0 — security-first release gates
 
-- [ ] Review remaining CRITICAL findings against Debian advisories and exact installed versions; patch, remove dependency, or explicitly approve a narrow exception. 0️⃣
+- [ ] Qualify dev8 dependency closure and compare both Trivy reports with dev7; review any remaining CRITICAL findings against Debian advisories and exact installed versions before approving an exception. 0️⃣
 - [ ] Review full host hardening reference, pinned Actions and transitive installers; pin approved base image digest and define controlled refresh. 1️⃣
 - [ ] Qualify configured Trivy gate, per-platform SBOM attestations, signed manifest and provenance; verify on pull and test scheduled re-scan. 2️⃣
-- [ ] Qualify dev7 on macOS M1, both CI architectures and Linux amd64 production-like host; verify signed GHCR publication. 3️⃣
+- [ ] Qualify dev8 on macOS M1, both CI architectures and Linux amd64 production-like host; verify signed GHCR publication. 3️⃣
 - [ ] Verify non-root effective privileges, protected deployment paths, SELinux, resource limits, firewall and Docker routes. 4️⃣
 - [ ] Verify first-start state permissions, trust anchor persistence/rollover and restart. 5️⃣
 - [ ] Probe IPv4/IPv6 exposure and unauthorized isolated lab clients; check source-IP NAT behavior. 6️⃣
@@ -43,3 +43,5 @@ Once action is done, remove the priority number.
 
 - [x] Record dev6 operator qualification: 47 offline assertions and 18 live recovery assertions passed on macOS M1; both CI architectures reached the CVE gate.
 - [x] Upgrade base Debian packages at build time; add per-platform package inventory and configurable CVE gate with exact expiring exceptions, summary and Perl regression tests (dev7; live CI pending).
+- [x] Record dev7 CI evidence: Debian libzstd1 update removed the fixable finding; four unapproved CRITICAL findings still blocked publication on both architectures.
+- [x] Replace BIND diagnostic utilities with LDNS drill; adapt health and integration checks, add dependency regression guard, offline TAP tests and per-platform CI image-size evidence (dev8; live build pending).

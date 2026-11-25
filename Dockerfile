@@ -3,7 +3,7 @@ LABEL org.opencontainers.image.source="https://github.com/M-M-M-M/unbound-recurs
       org.opencontainers.image.description="Private recursive DNS resolver with DNSSEC" \
       org.opencontainers.image.licenses="MIT"
 RUN apt-get update && apt-get upgrade -y && apt-get install -y --no-install-recommends \
-      unbound dns-root-data bind9-dnsutils ca-certificates \
+      unbound dns-root-data ldnsutils ca-certificates \
     && rm -rf /var/lib/apt/lists/* \
     && install -d -m 0750 -o 10001 -g 10001 /state /run/resolver \
     && test -s /usr/share/dns/root.key && test -s /usr/share/dns/root.hints

@@ -140,3 +140,51 @@ is used by the healthcheck and integration tests), and ca-certificates. Do not
 remove transitive packages blindly; review the package inventory, Debian
 package dependency graph and runtime tests before any removal. The dev7
 archive has not been built with Docker in the preparation environment.
+
+## dev7 CI evidence / dev8 dependency reduction
+
+GitHub Actions log export 123684682709: both native jobs reached the CVE gate.
+Each reported 347 package findings, 157 unique vulnerability IDs, 81 HIGH,
+4 CRITICAL, zero reported fixes, four blockers, 103 warnings and 240
+informational findings. No exceptions were used. The build installed updated
+libzstd1 1.5.7+dfsg-1+deb13u1, removing the previously reported fixable finding.
+The four remaining blockers were the three LMDB findings and libxml2 finding
+listed above. Publication did not proceed. The amd64 build log reports 47.2 MB
+additional disk space for the dependency installation (not total image size).
+
+Dev8 replaces `bind9-dnsutils` with `ldnsutils`. Debian's package metadata
+indicates that the BIND diagnostic stack introduces the unwanted libraries;
+removal from the actual transitive closure must be confirmed by a new build.
+See <https://packages.debian.org/trixie/ldnsutils> and
+<https://manpages.debian.org/trixie/ldnsutils/drill.1.en.html>.
+The healthcheck checks the exact synthetic record and NOERROR, with a bounded
+probe; the live suite still tests UDP, TCP, positive AD, negative SERVFAIL,
+checking-disabled availability and cache counters. A package policy rejects
+installed BIND, LMDB and libxml2 packages; deliberate future changes require
+review rather than silently relaxing this check. The CVE gate and exceptions
+are unchanged.
+
+Local offline `make test-unit` passed 108 assertions (76 existing, 15 probe,
+17 dependency policy). These are simulated probe/inventory inputs, not a
+live drill execution. Docker and drill were unavailable here. Run on M1:
+
+```sh
+make test-unit
+# Optional: record the existing dev7 image before rebuilding, if still present.
+docker image inspect unbound-recursive:dev --format '{{.Size}}'
+make build
+make start
+make test
+make test-state
+docker image inspect unbound-recursive:dev --format '{{.Size}}'
+```
+
+Record which image ID/digest and revision each size represents. Compare sizes
+only for the same platform and measurement (Docker image inspect .Size).
+CI now records `image-size-bytes.txt` along with `packages.tsv`, Trivy JSON
+and CycloneDX SBOM. Compare dev8 with the historical dev7 reports/inventory
+from run 123684682709, not with the number of vulnerabilities alone. A new
+scanner DB or Debian package version may change the findings independently.
+The four blockers are expected to disappear if their packages are absent;
+new HIGH/CRITICAL findings remain subject to the existing policy. Signing,
+attestations, promotion and Linux host qualification remain unverified.

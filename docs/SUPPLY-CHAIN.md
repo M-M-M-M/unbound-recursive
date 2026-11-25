@@ -14,7 +14,8 @@ exact, time-limited, reviewed exception applies. Unfixed HIGH warns by default
 or invalid reports/policies block; LOW/MEDIUM remain informational and UNKNOWN
 warns. Do not treat an accepted scan as a production release approval. The
 Dockerfile upgrades installed Debian packages before installing dependencies.
-The full Trivy JSON, SBOM and dpkg package inventory are retained as evidence;
+The full Trivy JSON, SBOM, dpkg package inventory and uncompressed image size
+(in bytes, per architecture) are retained as evidence;
 the gate adds a GitHub step summary. The re-scan uses the same policy.
 The evidence artifacts expire after 30 days; retain approved release evidence
 in the protected operator archive. Tool and database availability failures are
