@@ -26,7 +26,7 @@ backup-state:
 restore-state:
 	UNBOUND_IMAGE=unbound-recursive:dev ./scripts/state.sh restore
 test-unit:
-	RUN_DOCKER_TESTS=0 prove -v tests/vulnerability-gate.t tests/state-mock.t
+	RUN_DOCKER_TESTS=0 prove -v tests/vulnerability-gate.t tests/state-mock.t tests/confirmation.t
 test-state:
 	RUN_DOCKER_TESTS=1 prove -v tests/state-live.t
 test-all:

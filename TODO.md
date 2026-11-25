@@ -10,11 +10,11 @@ Once action is done, remove the priority number.
 - [ ] Review full host hardening reference when supplied; record exceptions and approvals. 0️⃣
 - [ ] Review pinned Actions and transitive installers; pin approved base image digest and define controlled refresh. 1️⃣
 - [ ] Qualify configured Trivy gate, per-platform SBOM attestations, signed manifest and provenance; verify on pull and test scheduled re-scan. 2️⃣
-- [ ] Re-qualify dev5 on macOS M1, both CI architectures and Linux amd64 production-like host; verify signed GHCR publication. 3️⃣
+- [ ] Re-qualify dev6 on macOS M1, both CI architectures and Linux amd64 production-like host; verify signed GHCR publication. 3️⃣
 - [ ] Verify non-root effective privileges, protected deployment paths, SELinux, resource limits, firewall and Docker routes. 4️⃣
 - [ ] Verify first-start state permissions, trust anchor persistence/rollover and restart. 5️⃣
 - [ ] Probe IPv4/IPv6 exposure and unauthorized isolated lab clients; check source-IP NAT behavior. 6️⃣
-- [ ] Qualify dev5 recovery after total purge using make test-state; verify permissions and timing, digest-based deployment and rollback. 7️⃣
+- [ ] Qualify dev6 recovery after total purge using make test-state; verify permissions and timing, digest-based deployment and rollback. 7️⃣
 - [ ] Qualify least-privilege stats-only collection or obtain explicit approval for administrative socket access; test Telegraf and Grafana. 8️⃣
 - [ ] Add deterministic DNSSEC-negative fixture and bounded resource/load tests. 9️⃣
 - [ ] Record all acceptance evidence and approve release before any production deployment. 🔟
@@ -38,3 +38,5 @@ Once action is done, remove the priority number.
 - [x] Correct absent-container restoration, verify persisted SHA-512 and add isolated live recovery test (live execution pending).
 - [x] Configure SHA-pinned workflow, Trivy, SBOM/provenance attestations, Cosign signature and daily re-scan (CI qualification pending).
 - [x] Convert Python tooling to core Perl and TAP tests; wire prove into Make and CI (offline tests passed; live and macOS PTY qualification pending).
+
+- [x] Synchronize test confirmation with the actual PTY prompt and keep stdin open; add delayed/split prompt regression tests (Linux offline validated; macOS re-test pending).

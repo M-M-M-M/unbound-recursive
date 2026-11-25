@@ -98,3 +98,18 @@ The real PTY confirmations were exercised using util-linux `script`. macOS
 BSD `script`, the minimum Perl 5.26 runtime, live Docker recovery and the
 modified CI workflows remain to be qualified. `make test-unit` runs without
 Docker; `make test-state` explicitly enables the isolated live recovery suite.
+
+## dev6 interactive confirmation portability
+
+Operator evidence for dev5 on macOS M1: vulnerability-gate.t 16/16,
+local build/start and integration.t passed. state-mock.t failed seven of 29
+assertions; state-live.t stopped at confirmed restore with `confirmation
+cancelled`, then cleaned up its disposable project. The failure is consistent
+with early input/EOF in the BSD script driver, not proof of a resolver fault.
+
+Dev6 waits for the prompt and leaves the input pipe open; confirmation.t
+checks delayed and split prompts and incorrect confirmation. The production
+state.sh is unchanged. Offline tests passed under Linux with util-linux
+script. Re-run `prove -v tests/*.t` and `make test-state` on macOS to qualify
+the BSD implementation and actual recovery. CI and Linux production-like
+qualification are still pending.

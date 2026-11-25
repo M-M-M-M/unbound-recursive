@@ -4,7 +4,7 @@ A self-hosted recursive DNS resolver based on Unbound and Debian slim. No public
 recursive forwarder is used. The default deployment is private, not a public
 DNS service. DNSSEC authenticates signed DNS data; it does not encrypt recursion.
 
-**Status: 0.1.0-dev5 — Perl and TAP test revision, not production-qualified.**
+**Status: 0.1.0-dev6 — portable interactive test revision, not production-qualified.**
 Previous snapshot passed macOS M1 and GHCR tests. This revision retains recovery
 and supply-chain controls and replaces Python tooling with Perl; live CI and host qualification remain required. DoH,
 DoT, authentication, per-client monitoring and automated blocking remain planned.

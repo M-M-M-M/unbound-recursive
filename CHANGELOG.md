@@ -7,6 +7,14 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 
 ## [Unreleased]
 
+### Fixed (dev6)
+
+- Wait for the interactive prompt before sending test confirmations and keep
+  the PTY input pipe open until the child exits. Fix the suspected cause of
+  BSD/macOS `script` cancelling valid confirmations in dev5; preserve the
+  production operator safeguards.
+- Add delayed/split prompt regression tests for correct and incorrect input.
+
 ### Changed (dev5)
 
 - Replace Python vulnerability gate and recovery test runners with core Perl
