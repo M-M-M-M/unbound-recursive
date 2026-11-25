@@ -1,0 +1,11 @@
+use v5.26;
+use strict;
+use warnings;
+use Test::More;
+use FindBin;
+use lib "$FindBin::Bin/lib";
+use ProjectTest qw(run_command);
+plan skip_all => 'set RUN_DOCKER_TESTS=1 for the running test resolver' unless ($ENV{RUN_DOCKER_TESTS} // '') eq '1';
+my $result = run_command(["$FindBin::Bin/integration.sh"]);
+is($result->{code}, 0, 'running resolver integration') or diag($result->{stdout}, $result->{stderr});
+done_testing;

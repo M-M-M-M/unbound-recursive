@@ -53,7 +53,7 @@ required. Markdown formatting/lint tools were unavailable.
 
 ## State operations revision
 
-Shell syntax and Make dry-run checks passed. `python3 tests/state-mock.py`
+Shell syntax and Make dry-run checks passed. the former dev3 mocked state test
 passed using a simulated Docker CLI and pseudo-terminal: backup/checksum,
 running-instance refusal, corrupt backup refusal, noninteractive refusal,
 confirmation cancellation, confirmed purge and simulated restore. This does
@@ -64,3 +64,37 @@ the disposable project, create its stopped container, restore the trusted
 backup, start and repeat live DNSSEC tests. Verify recovery time, ownership,
 volume independence and failed/corrupt backup behavior. Do not run this exercise
 on a production instance. No real Docker operations were performed here.
+
+## Operator evidence — previous snapshot, 2026-11-25
+
+Source archive commit d8239a448a456ec1e82f66f1786a18a9c84dbfcb. Operator
+reported successful main workflow, native macOS M1 build and integration, GHCR
+manifest with linux/amd64 and linux/arm64, native ARM64 pull and live DNSSEC
+(NOERROR/AD and deliberately bogus SERVFAIL). Published manifest digest:
+`sha256:2c214010380c9541c45ee6fac956e0fee2323f2bc64cc9f5fb0abaa7953c1c2e`.
+Backup, non-destructive clean, confirmed purge, backup survival and restore to
+a recreated stopped container succeeded. Direct restore after complete purge
+failed because the original script required an existing container.
+
+## dev4 recovery and security revision
+
+Local simulated state test reproduces and covers the absent-container case,
+checksum mismatch, cancellation and no implicit start. New `make test-state`
+uses a unique disposable project with dynamic loopback ports and subnet, then
+cleans up only that project. It tests existing-volume recovery after clean,
+complete purge, corrupted backup refusal, exact restored bytes before start and
+live integration. In dev4 it required Python 3; dev5 replaces this dependency with Perl and prove. The live test requires Docker and a previously built local
+image (override `TEST_IMAGE` to an already pulled approved image). Run it only
+on a test Docker host. No production volume is targeted. CI now runs it on
+both native architectures, followed by vulnerability scans, inventory,
+publishing and verification. Live execution of dev4 is still pending.
+
+## dev5 Perl migration
+
+Offline regression tests were executed using Perl 5.40.1 on Linux, with
+`prove -v tests/*.t`. The CVE gate and mock state operations passed (45
+assertions); the two Docker-dependent test files were explicitly skipped.
+The real PTY confirmations were exercised using util-linux `script`. macOS
+BSD `script`, the minimum Perl 5.26 runtime, live Docker recovery and the
+modified CI workflows remain to be qualified. `make test-unit` runs without
+Docker; `make test-state` explicitly enables the isolated live recovery suite.

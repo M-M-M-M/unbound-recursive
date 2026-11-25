@@ -1,0 +1,54 @@
+name: Re-scan published snapshot
+on:
+  schedule:
+    - cron: '47 2 * * *'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  rescan:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: amd64
+            runner: ubuntu-24.04
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+      - name: Pull current public image and record digest
+        shell: bash
+        env:
+          ARCH: ${{ matrix.arch }}
+        run: |
+          set -euo pipefail
+          ref="ghcr.io/${GITHUB_REPOSITORY,,}:latest"
+          docker pull --platform "linux/$ARCH" "$ref"
+          test "$(docker image inspect "$ref" --format '{{.Os}}/{{.Architecture}}')" = "linux/$ARCH"
+          docker image inspect "$ref" --format '{{json .RepoDigests}} {{.Id}}' > scanned-image.txt
+          docker tag "$ref" unbound-recursive:rescan
+      - name: Trivy full vulnerability report
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          version: v0.70.0
+          image-ref: unbound-recursive:rescan
+          scanners: vuln
+          format: json
+          output: vulnerabilities.json
+          exit-code: '0'
+          ignore-unfixed: false
+          cache: false
+      - uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        if: always()
+        with:
+          name: rescan-${{ matrix.arch }}
+          path: |
+            scanned-image.txt
+            vulnerabilities.json
+          retention-days: 30
+      - run: perl scripts/vulnerability-gate.pl vulnerabilities.json

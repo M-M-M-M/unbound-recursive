@@ -31,7 +31,8 @@ From the protected release directory, copy compose.yaml and .env.example.
 Replace `UNBOUND_IMAGE` in .env with `ghcr.io/m-m-m-m/unbound-recursive@sha256:<approved manifest digest>`.
 Confirm architecture and package visibility in GHCR. Use tested digest rather
 than `latest`; compare digest to the qualified build, verify security reports
-and signature when that feature exists. At present signing is not implemented. This is a release blocker: the commands
+and signature using [supply-chain verification](SUPPLY-CHAIN.md). The new
+workflow is not yet live-qualified. This is a release blocker: the commands
 below are for isolated qualification only until the [hardening gates](HARDENING.md)
 are satisfied and an operator has approved a release.
 
@@ -109,8 +110,8 @@ and live signed/bogus DNS responses. Update only one resolver at a time.
 Use the existing approved backup tooling for configuration, approved image digest,
 local inventory and retention. The supplied operator-only `scripts/state.sh`
 handles the current default profile's named `/state` volume and its only durable
-file, `root.key`. It does not archive cache, logs or secrets. It requires an
-existing stopped container (not `down`), a trusted local image, and a protected
+file, `root.key`. It does not archive cache, logs or secrets. Backup requires an existing stopped container (not `down`); restoration can
+create one if absent. Both require a trusted local image and a protected
 working directory and backup directory. No root process in the helper, host bind
 mount, network, extra capability or Docker socket is used inside the helper.
 The invoking operator must have authorized Docker access. Use a separate procedure
@@ -139,9 +140,11 @@ requires operator investigation, not automatic removal.
 
 Restore first in an isolated instance. Stop one resolver, preserve its current
 state if present, and choose an approved backup from that same resolver. Use the
-base profile's existing stopped container; if it was removed, `docker compose
--f compose.yaml create unbound` recreates a container without starting it. For a
-new volume, verify expected UID/GID and permissions before attempting restore.
+base profile. If the container was removed, the restore script recreates a
+stopped container and its named volume after validating the backup and receiving
+confirmation, using the selected image already present locally. No pull, build
+or resolver start is performed. If the selected image is absent, retrieve and
+verify it separately. For a new volume, confirm numeric ownership and permissions.
 
 ```sh
 BACKUP_SET=/path/to/approved/backups/dnssec-<timestamp>-<suffix> ./scripts/state.sh restore
@@ -151,7 +154,7 @@ docker compose -f compose.yaml up -d --wait
 ```
 
 The restore verifies SHA-512 before writing, then replaces the anchor atomically
-as UID/GID 10001. It does not start the resolver or establish that an old anchor
+as UID/GID 10001 and reads back the persisted SHA-512 before reporting success. It does not start the resolver or establish that an old anchor
 is still valid. Check DNSSEC after starting. If restore fails, investigate the
 error and retain the last healthy backup; never automatically purge the volume.
 For local tests, `make restore-state BACKUP_SET=/path/to/backup` is equivalent.

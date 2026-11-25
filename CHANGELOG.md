@@ -7,7 +7,20 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 
 ## [Unreleased]
 
+### Changed (dev5)
+
+- Replace Python vulnerability gate and recovery test runners with core Perl
+  (5.26+) and TAP/Test::More; use prove in local Make targets and CI.
+- Separate offline tests from explicitly enabled live Docker tests; keep the
+  actual operator confirmation checks and use a platform pseudo-terminal.
+- Remove `scripts/vulnerability-gate.py`, `tests/vulnerability-gate.py`,
+  `tests/state-mock.py`, and `tests/state-live.py`.
+
 ### Added
+
+- Isolated live recovery test, Trivy vulnerability gate and per-architecture reports and CycloneDX SBOMs.
+- SHA-pinned GitHub Actions, GitHub attestations, keyless Cosign manifest signing and verification before promotion, and daily published-image re-scan.
+- Supply-chain policy and verification documentation; restore local ignore rules for backup and environment files.
 
 - Initial Dockerfile and private Compose deployment with persistent DNSSEC trust anchor, bounded logs, local healthcheck and integration tests.
 - Native two-platform GHCR development workflow, optional Telegraf configuration and starter Grafana assets.
@@ -17,7 +30,13 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 
 - Operator-only DNSSEC backup and restore with SHA-512 verification, local locking, and recovery documentation.
 
+### Fixed
+
+- Restore after complete purge without a prior resolver start; verify restored bytes by SHA-512.
+
 ### Changed
+
+- Separate unprivileged native qualification jobs from the main-only publishing job and transport tested images with verified checksums and IDs.
 
 - `make stop` retains the stopped container; `make clean` retains named volumes. Explicit interactive `make purge` is the destructive alternative.
 

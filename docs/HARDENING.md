@@ -13,11 +13,11 @@ by this document. Status reflects source inspection, not live validation.
 | Private DNS | Configured | Loopback host bindings, independent IPv4/IPv6 refusal probes, bridge ACL and NAT verification |
 | Resource and log budgets | Configured | Measured limits, restart and load/rotation tests |
 | DNSSEC | Configured | Valid and bogus DNSSEC tests, persistent trust anchor, recovery |
-| CI trust | Pending | Pin action revisions, review dependency changes and minimum token permissions; no secrets on untrusted PRs |
+| CI trust | Configured; unqualified | Pin action revisions, review dependency changes and minimum token permissions; no secrets on untrusted PRs |
 | Base image and Debian packages | Partial | Approved base digest; controlled refresh, record actual package versions and tested digests |
-| Vulnerability scan | Pending | Trivy or reviewed equivalent, scan both platform images and block unacceptable findings; documented exceptions with expiry |
-| SBOM and provenance | Pending | Generate per-platform inventories and attestations tied to exact digests |
-| Signature | Pending | Sign released manifest; verify identity, issuer and digest on pull |
+| Vulnerability scan | Configured; unqualified | Trivy or reviewed equivalent, scan both platform images and block unacceptable findings; documented exceptions with expiry |
+| SBOM and provenance | Configured; unqualified | Generate per-platform inventories and attestations tied to exact digests |
+| Signature | Configured; unqualified | Sign released manifest; verify identity, issuer and digest on pull |
 | Operator and host security | Pending | Approved administrative boundary, protected paths, firewall, SELinux, UID/GID, backup and rollback evidence |
 | Monitoring boundary | Partial | Stats-only export or explicitly authorized administrative socket; no application access to Docker |
 | Secrets | N/A core | No secrets needed; review approved secrets framework before adding authentication |
@@ -41,3 +41,6 @@ frontend before it is enabled. DoH/DoT and dynamic blocking are design work only
 
 The full external host-hardening reference has not yet been supplied. Reconcile
 this checklist with it before release, document deviations and obtain approval.
+
+See [supply-chain security](SUPPLY-CHAIN.md) for the implemented CI policy and
+verification commands. Review and qualify all new controls before release.

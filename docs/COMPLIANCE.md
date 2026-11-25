@@ -12,7 +12,7 @@ validator, date and review date.
 | Rule | Status | Evidence / remaining qualification |
 | --- | --- | --- |
 | GEN | Proposed / verify | README, PLAN, ops docs; check actual protected layout |
-| LANG | Proposed / verify | Minimal portable POSIX sh, no complex new logic; Perl/Zsh preferred where appropriate; no Perl base required |
+| LANG | Proposed / verify | Minimal portable POSIX sh, no complex new logic; Perl core-only structured processing and TAP/prove tests on host; no Perl in resolver image |
 | SEC | N/A core | No secrets; future auth uses existing 1Password/SOPS/age, inspect framework and trust boundaries |
 | PRIV | Proposed / verify | Dockerfile USER, Compose hardening; confirm numeric IDs, operator rights, SELinux, parents/ACL, socket trust |
 | PATH | N/A core | DNS-only, no HTTP site; future DoH uses prescribed hosting path with sites/ |

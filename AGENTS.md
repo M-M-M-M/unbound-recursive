@@ -214,3 +214,13 @@ is intentional. For live recursive DNS tests, external authoritative DNS is
 necessarily required; keep offline checks separate and document this exception.
 Do not use the public development image in production until the release gates
 pass.
+
+## Project-specific language and testing policy
+
+Use Perl for structured processing and complex tests, with core modules only.
+Minimum supported host Perl is 5.26 for compatibility with macOS system Perl
+and Linux CI; use the established feature bundle. Keep simple container scripts
+POSIX sh. Do not introduce Python or external Perl modules without explicit
+justification and owner approval. Use Test::More and prove for TAP tests.
+Offline tests must not require Docker or Internet access. Docker integration
+and destructive recovery require explicit opt-in and disposable test resources.

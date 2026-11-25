@@ -4,10 +4,10 @@ A self-hosted recursive DNS resolver based on Unbound and Debian slim. No public
 recursive forwarder is used. The default deployment is private, not a public
 DNS service. DNSSEC authenticates signed DNS data; it does not encrypt recursion.
 
-**Status: 0.1.0-dev — initial implementation, not production-qualified.**
-Docker builds, CI, package publication, live DNSSEC tests and host integration
-must be validated. DoH, DoT, authentication, per-client monitoring, automated
-blocking, image signing and vulnerability gates are planned, not implemented.
+**Status: 0.1.0-dev5 — Perl and TAP test revision, not production-qualified.**
+Previous snapshot passed macOS M1 and GHCR tests. This revision retains recovery
+and supply-chain controls and replaces Python tooling with Perl; live CI and host qualification remain required. DoH,
+DoT, authentication, per-client monitoring and automated blocking remain planned.
 Hardening is mandatory from 0.1.0; the outstanding supply-chain checks are
 release blockers, not deferred to a later version.
 
@@ -43,7 +43,7 @@ has been reviewed), without building locally:
 cp .env.example .env
 docker compose pull
 docker compose up -d --wait
-./tests/integration.sh
+make test
 ```
 
 `make stop` stops the local container without removing it. `make clean` removes
@@ -60,7 +60,9 @@ make start
 
 Backups default to the ignored `backups/` directory for local tests; use an
 approved protected external backup location in production. `make restore-state`
-requires `BACKUP_SET` and explicit confirmation. The healthcheck tests a local
+requires `BACKUP_SET` and explicit confirmation; it can recreate a stopped
+container and volume without starting the resolver. Use `make test-state`
+(Perl and `prove`) to exercise destructive recovery in a disposable Compose project. The healthcheck tests a local
 record, not upstream reachability. The integration script explicitly tests live
 DNSSEC separately.
 
@@ -70,8 +72,9 @@ The registry is `ghcr.io/m-m-m-m/unbound-recursive`. The workflow builds nativel
 for amd64/arm64, tests each platform image and assembles a manifest from their
 published digests. Daily builds refresh Debian packages; they do not update
 production automatically. Review CI, scan results and pin the approved manifest
-digest before deploying. The base tag and GitHub Actions tags are mutable in
-this development version; supply-chain hardening is a 0.1.0 release blocker.
+digest before deploying. Direct GitHub Actions are SHA-pinned; Trivy, SBOM, provenance and Cosign
+checks are configured. The base image tag remains mutable and must be reviewed
+and pinned before production. See [supply-chain security](docs/SUPPLY-CHAIN.md).
 The development workflow may publish test snapshots only; do not treat `latest`
 as a qualified production release.
 
@@ -100,3 +103,24 @@ and HTTP infrastructure. Do not publish a recursive UDP resolver to the Internet
 
 Project code/configuration: MIT (see LICENSE). Unbound, Debian and other bundled
 packages retain their own licenses; see package copyright files in the image.
+
+## Development tests
+
+Use Perl 5.26 or newer (core modules only), `prove`, POSIX shell and the
+platform's `script` utility (BSD on macOS, util-linux on Linux). Perl and
+`prove` run on the development/CI host, not in the resolver image.
+
+- `prove -v tests/*.t` or `make test-unit`: offline regression tests; live tests
+  are skipped unless explicitly enabled.
+- `make test`: integration tests against the running local test instance.
+- `make test-state`: opt-in destructive recovery in a disposable Compose project
+  on a test Docker host; requires the local development image.
+- `make test-all`: all tests (running local test instance and Docker required).
+
+The state tests use a real pseudo-terminal via `script` to exercise operator
+confirmation without bypassing the production safety checks. Do not enable
+Docker tests on production hosts.
+
+When upgrading an existing dev4 checkout by copying this bundle, remove the
+four obsolete tracked Python files explicitly (`git rm`); copying files with
+rsync does not remove them. See the changelog for their paths.

@@ -42,18 +42,49 @@ if [ "$1" = purge ]; then
     compose down --volumes
     exit 0
 fi
-# Do not create a volume implicitly. Require the actual stopped service container.
+# Validate backup bytes before creating anything. Never start the resolver here.
+if [ "$1" = restore ]; then
+    src=${BACKUP_SET:-}
+    [ -n "$src" ] || fail 'set BACKUP_SET to an approved backup directory'
+    [ -f "$src/root.key" ] && [ ! -L "$src/root.key" ] && [ -s "$src/root.key" ] || fail 'missing or empty trust anchor'
+    [ -f "$src/root.key.sha512" ] && [ ! -L "$src/root.key.sha512" ] || fail 'missing checksum'
+    stage=$(mktemp -d "${TMPDIR:-/tmp}/unbound-restore.XXXXXXXX")
+    cp "$src/root.key" "$stage/root.key"
+    cp "$src/root.key.sha512" "$stage/root.key.sha512"
+    [ "$(checksum "$stage/root.key")" = "$(cat "$stage/root.key.sha512")" ] || fail 'checksum mismatch'
+fi
+# Identify the actual service mount, never guess a project-specific volume name.
+inspect_stopped() {
+    id=$(compose ps -a -q unbound)
+    case "$id" in ''|*[!a-fA-F0-9]*) fail 'exactly one existing unbound container is required';; esac
+    status=$(docker inspect --format '{{.State.Status}}' "$id")
+    case "$status" in exited|created) ;; *) fail 'stop the resolver first; never back up or restore live state';; esac
+    volume=$(docker inspect --format '{{range .Mounts}}{{if eq .Destination "/state"}}{{if eq .Type "volume"}}{{.Name}}{{end}}{{end}}{{end}}' "$id")
+    case "$volume" in ''|*[!a-zA-Z0-9_.-]*) fail 'expected a named volume at /state';; esac
+    docker volume inspect "$volume" >/dev/null
+    users=$(docker ps -q --filter "volume=$volume")
+    [ -z "$users" ] || fail 'a running container still uses the volume'
+    image=$(docker inspect --format '{{.Image}}' "$id")
+    case "$image" in sha256:*) ;; *) fail 'expected an immutable local image ID';; esac
+}
 id=$(compose ps -a -q unbound)
-case "$id" in ''|*[!a-fA-F0-9]*) fail 'exactly one existing unbound container is required; stop it, do not remove it';; esac
-status=$(docker inspect --format '{{.State.Status}}' "$id")
-case "$status" in exited|created) ;; *) fail 'stop the resolver first; never back up or restore live state';; esac
-volume=$(docker inspect --format '{{range .Mounts}}{{if eq .Destination "/state"}}{{if eq .Type "volume"}}{{.Name}}{{end}}{{end}}{{end}}' "$id")
-case "$volume" in ''|*[!a-zA-Z0-9_.-]*) fail 'expected a named volume at /state';; esac
-docker volume inspect "$volume" >/dev/null
-users=$(docker ps -q --filter "volume=$volume")
-[ -z "$users" ] || fail 'a running container still uses the volume'
-image=$(docker inspect --format '{{.Image}}' "$id")
-case "$image" in sha256:*) ;; *) fail 'expected an immutable local image ID';; esac
+if [ -z "$id" ]; then
+    [ "$1" = restore ] || fail 'existing stopped container required for backup; do not clean it first'
+    compose config --quiet
+    printf 'Restore %s to the selected Compose project; create a stopped container and its volume if absent.\n' "$src" >&2
+    confirm 'Use only a trusted backup and a locally available approved image.' RESTORE
+    # No build, pull or start. Compose initializes a new named volume from the
+    # image directory, including its numeric ownership. Reuse an existing one.
+    compose create --no-build --pull never unbound
+    inspect_stopped
+else
+    inspect_stopped
+    if [ "$1" = restore ]; then
+        printf 'Restore %s to volume %s; use only a trusted backup from this resolver.\n' "$src" "$volume" >&2
+        confirm 'This replaces the current trust anchor; preserve its backup first.' RESTORE
+        inspect_stopped
+    fi
+fi
 # Reuse the exact local image. No registry pull, host binds, or network access.
 helper() {
     docker run --rm -i --pull never --network none --user 10001:10001 \
@@ -76,17 +107,10 @@ if [ "$1" = backup ]; then
     stage=''
     printf 'DNSSEC backup: %s (volume: %s)\n' "$final" "$volume"
 else
-    src=${BACKUP_SET:-}
-    [ -n "$src" ] || fail 'set BACKUP_SET to an approved backup directory'
-    [ -f "$src/root.key" ] && [ ! -L "$src/root.key" ] && [ -s "$src/root.key" ] || fail 'missing or empty trust anchor'
-    [ -f "$src/root.key.sha512" ] && [ ! -L "$src/root.key.sha512" ] || fail 'missing checksum'
-    # Snapshot the input in a private temporary directory before verification/use.
-    stage=$(mktemp -d "${TMPDIR:-/tmp}/unbound-restore.XXXXXXXX")
-    cp "$src/root.key" "$stage/root.key"
-    cp "$src/root.key.sha512" "$stage/root.key.sha512"
-    [ "$(checksum "$stage/root.key")" = "$(cat "$stage/root.key.sha512")" ] || fail 'checksum mismatch'
-    printf 'Restore %s to volume %s; use only a trusted backup from this resolver.\n' "$src" "$volume" >&2
-    confirm 'This replaces the current trust anchor; preserve its backup first.' RESTORE
-    helper '' 'umask 027; tmp=$(mktemp /state/root.key.restore.XXXXXXXX); trap '\''rm -f "$tmp"'\'' EXIT HUP INT TERM; cat > "$tmp"; [ -s "$tmp" ]; chmod 0640 "$tmp"; mv -f "$tmp" /state/root.key' < "$stage/root.key"
-    printf 'Trust anchor restored. Start the resolver explicitly and verify DNSSEC.\n'
+    helper '' 'umask 027; [ ! -L /state/root.key ] && [ ! -d /state/root.key ] || exit 1; tmp=$(mktemp /state/root.key.restore.XXXXXXXX); trap '\''rm -f "$tmp"'\'' EXIT HUP INT TERM; cat > "$tmp"; [ -s "$tmp" ]; chmod 0640 "$tmp"; mv -f "$tmp" /state/root.key' < "$stage/root.key"
+    # Verify the persisted bytes before permitting the operator to start it.
+    expected=$(checksum "$stage/root.key")
+    actual=$(helper ',readonly' 'sha512sum < /state/root.key')
+    [ "${actual%% *}" = "$expected" ] || fail 'restored trust anchor checksum mismatch'
+    printf 'Trust anchor restored and SHA-512 verified. Start the resolver explicitly and verify DNSSEC.\n'
 fi
