@@ -27,7 +27,7 @@ jobs:
       contents: read
       packages: write
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Build from current Debian packages
         run: docker build --pull --no-cache -t unbound-recursive:dev .
       - name: Start and qualify image
