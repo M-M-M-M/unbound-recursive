@@ -1,0 +1,6 @@
+services:
+  unbound:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: unbound-recursive:dev

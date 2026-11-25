@@ -1,0 +1,7 @@
+**
+!Dockerfile
+!config/
+!config/unbound.conf
+!scripts/
+!scripts/entrypoint.sh
+!scripts/healthcheck.sh

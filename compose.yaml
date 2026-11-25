@@ -1,0 +1,37 @@
+services:
+  unbound:
+    image: ${UNBOUND_IMAGE:-ghcr.io/m-m-m-m/unbound-recursive:latest}
+    user: "10001:10001"
+    read_only: true
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+    ports:
+      - "127.0.0.1:${DNS_PORT:-1053}:5353/udp"
+      - "127.0.0.1:${DNS_PORT:-1053}:5353/tcp"
+    tmpfs:
+      - /run/resolver:uid=10001,gid=10001,mode=0750,size=1m
+      - /tmp:uid=10001,gid=10001,mode=0700,size=16m
+    volumes:
+      - state:/state
+    networks:
+      - resolver
+    mem_limit: 512m
+    cpus: 1.0
+    pids_limit: 64
+    restart: unless-stopped
+    stop_grace_period: 15s
+    logging:
+      driver: local
+      options:
+        max-size: "10m"
+        max-file: "5"
+        compress: "true"
+networks:
+  resolver:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.30.53.0/24
+volumes:
+  state:

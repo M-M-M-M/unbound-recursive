@@ -1,0 +1,92 @@
+# Development snapshots only. Production release gates: docs/HARDENING.md.
+name: Build and qualify
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+  schedule:
+    - cron: '23 4 * * *'
+permissions:
+  contents: read
+concurrency:
+  group: resolver-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  qualify:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: amd64
+            runner: ubuntu-24.04
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v6
+      - name: Build from current Debian packages
+        run: docker build --pull --no-cache -t unbound-recursive:dev .
+      - name: Start and qualify image
+        run: |
+          export UNBOUND_IMAGE=unbound-recursive:dev
+          docker compose up -d --wait
+          ./tests/integration.sh
+      - name: Diagnostics and cleanup
+        if: always()
+        run: |
+          UNBOUND_IMAGE=unbound-recursive:dev docker compose logs --tail=100
+          UNBOUND_IMAGE=unbound-recursive:dev docker compose down -v
+      - name: Log in to GHCR
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Push tested platform image
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+        env:
+          ARCH: ${{ matrix.arch }}
+        run: |
+          set -eu
+          repo="ghcr.io/${GITHUB_REPOSITORY,,}"
+          ref="$repo:ci-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}-${ARCH}"
+          docker tag unbound-recursive:dev "$ref"
+          docker push "$ref"
+          docker image inspect "$ref" --format '{{range .RepoDigests}}{{println .}}{{end}}' | grep -F "$repo@sha256:" | head -1 > digest-${ARCH}.txt
+          test -s digest-${ARCH}.txt
+      - uses: actions/upload-artifact@v4
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+        with:
+          name: digest-${{ matrix.arch }}
+          path: digest-${{ matrix.arch }}.txt
+  publish:
+    needs: qualify
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: digest-*
+          merge-multiple: true
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/setup-buildx-action@v3
+      - name: Publish exact tested platform digests
+        run: |
+          set -eu
+          repo="ghcr.io/${GITHUB_REPOSITORY,,}"
+          docker buildx imagetools create \
+            -t "$repo:latest" -t "$repo:build-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}" \
+            "$(cat digest-amd64.txt)" "$(cat digest-arm64.txt)"
+          docker buildx imagetools inspect "$repo:latest"
