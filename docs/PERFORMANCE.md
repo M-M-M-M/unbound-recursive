@@ -28,49 +28,86 @@ Unbound image is unchanged and neither the lab nor client is published.
 
 ```sh
 make build
-make test-network    # unmodified production config, isolated unauthorized peer
-make test-benchmark  # small deterministic UDP/TCP warm/cold smoke test
-make benchmark       # bounded concurrent workload, not part of ordinary CI
+make test-network       # actual production config, isolated unauthorized peer
+make test-benchmark     # four paced small smoke phases; limits retained
+make benchmark          # baseline without lab-only IP/domain limits
+make benchmark-production
+make benchmark-ratelimit
+make benchmark-stress
 ```
 
-The smoke test uses 12 requests per case and checks correct A responses and
-cache hit/miss counters. The full benchmark uses 1,000 requests per case
-(4 workers), then 4,000 unique UDP names (16 workers). Each worker stops
-issuing requests after 30 seconds per phase; each request has a nominal
-one-second timeout. No arbitrary destination or names are accepted. Warm
-queries use a primed fixed name; cold queries use unique names. The fixture
-returns 192.0.2.80. The wire response is checked for transaction ID, question,
-rcode, truncation and expected A record. TCP timings include new connection
-establishment; this is not a persistent-TCP throughput benchmark. Local
-health probes can affect the counters; cache deltas are supporting evidence,
-not exact per-request accounting. IP rate limiting may intentionally reduce
-success rates. Losses, invalid replies and unattempted requests are not
-included in successful latency statistics. Recovery is checked on both UDP
-and TCP after the load.
+| Profile | Target rate (queries/s) | Emission window | Limits in lab |
+|---|---|---|---|
+| quick | 12 | 1 s per case | 100 IP / 200 domain |
+| baseline | 1000 | 10 s per case | off |
+| production | 50 | 10 s per case | 100 IP / 200 domain |
+| ratelimit | 50, 200 | 10 s per case | 100 IP / 200 domain |
+| stress | 500, 1000, 2500, 5000, 10000; 1000 | 10 s; 30 and 60 s | off |
 
-`benchmark-results/run-*/report.{json,csv,md}` is ignored by Git. JSON includes
-image ID and size, OS/architecture, Docker version, cache counters, attempts,
-outcome counts, actual worker wall time, successful QPS, latency percentiles
-and sampled `docker stats` CPU/memory/network/I/O. Schema 2 records the client
-image separately and labels samples with `role=resolver` or `role=client`.
-Timings are measured inside the load generator; they exclude host-side Docker
-exec and stats polling. A local image ID is not a
-signed multiarchitecture GHCR digest. For publication-grade comparisons record
-verified manifest digest, build commit, CPU allocation, Docker version, host
-load and repetitions separately. Docker stats samples can miss short bursts;
-empty samples mean no sample collected, not zero resource use. Do not compare
-macOS VM and native Linux numbers without noting the difference. Do not
-compare the old host-loopback architecture to this container-to-container
-architecture as if the measurement path were identical. No universal
-throughput acceptance threshold is imposed by CI. Full benchmark is opt-in.
+Baseline and production-like profiles exercise UDP/TCP warm/cold plus
+persistent TCP warm; the rate-limit profile exercises both transports with
+warm cache, below and above the IP limit. Stress uses unique UDP names with
+16 workers. The production-like profile reproduces the limiter settings,
+not every aspect of production: the lab still forwards to a synthetic fixture
+and has a deliberately broad lab ACL. The production configuration is never
+changed. Baseline/stress change exactly two directives in the private copy
+of the benchmark resolver configuration. The smoke checks all expected
+responses and observes cache hits/misses. The rate-limit profile checks
+at least 95% success and no IP limiting below threshold; above threshold it
+requires actual offered rate >100 and a positive IP-limit counter delta.
+These are lab assertions, not universal service-level objectives.
 
-`make test-network` uses the unchanged production image on a randomly allocated
-internal network outside the allowed subnet. It checks loopback success,
-unauthorized peer REFUSED responses on UDP/TCP, process capabilities,
-NoNewPrivs, seccomp and absence of published ports. It is not a substitute for
-host firewall, IPv6, Docker NAT/source-IP behavior, SELinux, remote-network
-exposure or amplification measurements on a production-like host. Do not
-probe public hosts. Deterministic DNSSEC-negative fixtures, prolonged soak,
-precise resource peaks and real alert/retention qualification remain release
-gates. The monitoring and benchmark labs are deliberately separate; the
-current Grafana dashboard does not automatically consume benchmark results.
+Workers follow an absolute monotonic schedule with a fixed count/duration
+and skip missed slots instead of replaying them. This is a bounded,
+closed-loop worker implementation with paced slots, not an unlimited
+open-loop traffic generator. If the generator cannot sustain the offered
+rate, the report identifies that limitation instead of calling it resolver
+packet loss. Each worker has at most one outstanding query; request timeout
+is nominally one second. The wall-clock goodput includes the full emission
+window plus any drain/worker finalization. `offered_qps` counts fully sent
+queries divided by the scheduled emission window. `attempted` includes
+connection/write failures; `sent` requires a complete wire write (not proof of
+server receipt); `not_attempted` counts missed slots. DNS errors, peer EOF,
+timeout, connection/write/read errors are distinguished from successful replies.
+The aggregate limiter counter is not a per-request attribution. Persistent
+TCP reuses a connection until error and then reconnects on a later slot;
+there is no pipelining. Success latencies exclude failed requests.
+
+Warm queries use a primed fixed name; cold queries use unique names. The
+fixture returns 192.0.2.80. Validate the transaction ID, question, rcode,
+truncation and answer. Local health probes can affect counters. Recovery is
+checked on UDP and TCP after load. The fixture healthcheck verifies the local
+record directly at 127.0.0.1:5354; the client process healthcheck is a Perl
+runtime check; the subsequent end-to-end probes verify actual reachability.
+
+`benchmark-results/run-*/report.{json,csv,md}` is ignored by Git. JSON schema 3
+records the profile, phase start (host epoch seconds), target/actual rates,
+outcomes, counters, latency percentiles and resource samples by role. Docker
+stats is requested repeatedly with a short pause; Docker's own sampling
+interval and VM scheduling limit precision. Phase/resource times are approximate
+host time, not wire packet timestamps; samples can overlap the phase boundary.
+Empty samples mean no sample, not zero CPU/RAM. The reports are not a maximum
+capacity claim. Completed `phases.json`, `error.txt`, `ps.txt`, and `logs.txt`
+are retained on failure when available, before removing disposable containers.
+Review local reports before sharing. A local image ID is not a signed GHCR
+manifest digest; record commit, verified digest, host/VM and repeat measurements.
+
+## Grafana (post-run)
+
+```sh
+make monitoring-start
+make benchmark-monitoring REPORT=benchmark-results/run-XXXXXXXX/report.json
+```
+
+Stop the foreground monitoring traffic first if running. The importer reads
+only a schema-3 local report and writes validated numeric line protocol via
+stdin to the existing disposable InfluxDB lab, not to production. It adds a
+five-panel dashboard and prints its URL; wait for Grafana file provisioning
+or refresh the browser. Select the benchmark time range, within the lab's
+24-hour retention. Phase summaries and resource samples are separate
+measurements tagged by run/profile/case (and resource role). Reimport of the
+same report uses the same points. This is post-run visualization, not live
+benchmark streaming; no network bridge between labs is required. The
+monitoring integration test checks import and dashboard queries with a known
+synthetic report. Real Docker qualification and longer-duration retention,
+alert delivery and production-like soak remain pending.

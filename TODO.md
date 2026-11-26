@@ -16,7 +16,7 @@ Once action is done, remove the priority number.
 - [ ] Probe IPv4/IPv6 exposure and unauthorized isolated lab clients; check source-IP NAT behavior. 6️⃣
 - [ ] Audit installed package inventory and qualify signed deployment on isolated production-like host; dev12 manual CI workflow reported passed. 7️⃣
 - [ ] Qualify real alert delivery, per-host absence, retention and deployment-specific permissions; dev13 CI and M1 dashboard reported successful. 8️⃣
-- [ ] Qualify corrected dev14.1 internal benchmark on M1 and native CI; retain full reports. Dev14 M1 ACL audit passed; add deterministic DNSSEC-negative fixture and prolonged resource/load tests. 9️⃣
+- [ ] Qualify dev14.2 smoke on M1/native CI, paced baseline, production-like, rate limiting, stress and report import; retain results. Add deterministic DNSSEC-negative fixture and longer soak tests. 9️⃣
 - [ ] Record all acceptance evidence and approve release before any production deployment. 🔟
 
 ## Later milestones
@@ -27,6 +27,8 @@ Once action is done, remove the priority number.
 - [ ] 1.0.0: full operational and recovery qualification for supported deployment profiles. #️⃣
 
 ## Completed
+
+- [x] Dev14.1 local report: 7,645 attempts, 5,467 successes, 2,178 IP-limited counter increments, 355 unscheduled; recovery passed. Both native CI ACL audits passed; fixture healthcheck missing. Dev14.2 corrective implementation (live validation pending).
 
 - [x] Bootstrap Debian slim recursive Unbound container, local Compose and DNSSEC state.
 - [x] Add non-root defaults, bounded logs, healthcheck and initial integration tests.

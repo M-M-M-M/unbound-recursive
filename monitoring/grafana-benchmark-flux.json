@@ -1,0 +1,224 @@
+{
+  "id": null,
+  "uid": "unbound-recursive-benchmark",
+  "title": "Unbound benchmark \u2014 isolated lab report",
+  "description": "Imported phase aggregates and resource samples, not live resolver traffic. Select the run time range.",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "30s",
+  "time": {
+    "from": "now-1h",
+    "to": "now"
+  },
+  "panels": [
+    {
+      "id": 1,
+      "title": "Target, offered and successful queries/s",
+      "type": "timeseries",
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 12,
+        "h": 8
+      },
+      "datasource": {
+        "type": "influxdb",
+        "uid": "resolver-lab-flux"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "query": "from(bucket: \"resolver-lab\") |> range(start: v.timeRangeStart, stop: v.timeRangeStop) |> filter(fn: (r) => r._measurement == \"unbound_benchmark_phase\" and (r._field == \"target_qps\" or r._field == \"offered_qps\" or r._field == \"successful_qps\"))",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "resolver-lab-flux"
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "custom": {
+            "drawStyle": "points",
+            "showPoints": "always",
+            "pointSize": 5
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "showLegend": true
+        }
+      }
+    },
+    {
+      "id": 2,
+      "title": "Successful latency percentiles",
+      "type": "timeseries",
+      "gridPos": {
+        "x": 12,
+        "y": 0,
+        "w": 12,
+        "h": 8
+      },
+      "datasource": {
+        "type": "influxdb",
+        "uid": "resolver-lab-flux"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "query": "from(bucket: \"resolver-lab\") |> range(start: v.timeRangeStart, stop: v.timeRangeStop) |> filter(fn: (r) => r._measurement == \"unbound_benchmark_phase\" and (r._field == \"p95_ms\" or r._field == \"p99_ms\"))",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "resolver-lab-flux"
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms",
+          "custom": {
+            "drawStyle": "points",
+            "showPoints": "always",
+            "pointSize": 5
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "showLegend": true
+        }
+      }
+    },
+    {
+      "id": 3,
+      "title": "Queries and failures",
+      "type": "timeseries",
+      "gridPos": {
+        "x": 0,
+        "y": 8,
+        "w": 12,
+        "h": 8
+      },
+      "datasource": {
+        "type": "influxdb",
+        "uid": "resolver-lab-flux"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "query": "from(bucket: \"resolver-lab\") |> range(start: v.timeRangeStart, stop: v.timeRangeStop) |> filter(fn: (r) => r._measurement == \"unbound_benchmark_phase\" and (r._field == \"requested\" or r._field == \"sent\" or r._field == \"successes\" or r._field == \"failed\" or r._field == \"not_attempted\" or r._field == \"ip_limited\"))",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "resolver-lab-flux"
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "drawStyle": "points",
+            "showPoints": "always",
+            "pointSize": 5
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "showLegend": true
+        }
+      }
+    },
+    {
+      "id": 4,
+      "title": "CPU samples",
+      "type": "timeseries",
+      "gridPos": {
+        "x": 12,
+        "y": 8,
+        "w": 12,
+        "h": 8
+      },
+      "datasource": {
+        "type": "influxdb",
+        "uid": "resolver-lab-flux"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "query": "from(bucket: \"resolver-lab\") |> range(start: v.timeRangeStart, stop: v.timeRangeStop) |> filter(fn: (r) => r._measurement == \"unbound_benchmark_resource\" and (r._field == \"cpu_percent\"))",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "resolver-lab-flux"
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "custom": {
+            "drawStyle": "points",
+            "showPoints": "always",
+            "pointSize": 5
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "showLegend": true
+        }
+      }
+    },
+    {
+      "id": 5,
+      "title": "Memory samples",
+      "type": "timeseries",
+      "gridPos": {
+        "x": 0,
+        "y": 16,
+        "w": 12,
+        "h": 8
+      },
+      "datasource": {
+        "type": "influxdb",
+        "uid": "resolver-lab-flux"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "query": "from(bucket: \"resolver-lab\") |> range(start: v.timeRangeStart, stop: v.timeRangeStop) |> filter(fn: (r) => r._measurement == \"unbound_benchmark_resource\" and (r._field == \"memory_bytes\"))",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "resolver-lab-flux"
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "custom": {
+            "drawStyle": "points",
+            "showPoints": "always",
+            "pointSize": 5
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "showLegend": true
+        }
+      }
+    }
+  ],
+  "tags": [
+    "benchmark",
+    "lab"
+  ]
+}

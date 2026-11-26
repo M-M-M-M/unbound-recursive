@@ -46,8 +46,12 @@ and [TODO](TODO.md) for acceptance and prioritized work.
   native ACL smoke tests; M1 tests passed except benchmark initialization.
 - dev14.1: remove host port publication, use a separate internal client,
   qualify the revised load path on macOS and native CI; review current HIGH CVEs.
-  DNSSEC-negative fixture, prolonged soak, Grafana benchmark correlation and
-  production-like host audit remain open.
+  local run completed, but IP limiting accounted for all failed attempts;
+  both CI runners failed before load due to the disabled fixture healthcheck.
+- dev14.2: functional fixture healthcheck, paced and separated load profiles,
+  persistent TCP, diagnostic retention and post-run Grafana import. Qualify
+  live smoke and the opt-in profiles; retain reports and review current CVEs.
+  DNSSEC-negative fixture, longer soak and production-like host audit remain open.
 - dev15: production-like deployment, state migration and release-gate review.
 - 0.1.0-rc.1 / 0.1.0: only after explicit acceptance; snapshot numbers are not
   stable release promises.

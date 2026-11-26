@@ -6,6 +6,8 @@ use warnings;
 use FindBin qw($RealBin);
 use lib "$RealBin/../lib";
 use LocalDocker qw(require_local_docker);
+use lib $RealBin;
+use BenchmarkMetrics qw(report_lines);
 use Cwd qw(abs_path);
 use File::Path qw(make_path remove_tree);
 use File::Copy qw(copy);
@@ -15,11 +17,19 @@ use Time::HiRes qw(sleep);
 
 my $root = abs_path("$RealBin/..");
 my $dir = "$root/.monitoring-lab";
-my ($op) = @ARGV;
-@ARGV == 1 && $op =~ /\A(?:start|open|traffic|status|logs|usage|stop|clean)\z/
-    or die "usage: labctl.pl start|open|traffic|status|logs|usage|stop|clean\n";
+my ($op,$report_path) = @ARGV;
+(@ARGV == 1 && $op =~ /\A(?:start|open|traffic|status|logs|usage|stop|clean)\z/ || @ARGV == 2 && $op eq 'benchmark-import')
+    or die "usage: labctl.pl start|open|traffic|status|logs|usage|stop|clean|benchmark-import REPORT\n";
 $< != 0 or die "run as a non-root Docker operator\n";
 require_local_docker();
+my ($benchmark_lp,$benchmark_run);
+if ($op eq 'benchmark-import') {
+    defined($report_path) && !-l $report_path && -f $report_path && -s $report_path <= 5_000_000 or die "invalid report file\n";
+    my $resolved=abs_path($report_path);
+    $resolved =~ m{\A\Q$root\E/benchmark-results/(run-[A-Za-z0-9_]{8})/report\.json\z} or die "use a local benchmark-results report\n";
+    $benchmark_run=$1;
+    $benchmark_lp=report_lines(decode_json(read_file($resolved)),$benchmark_run);
+}
 umask 077;
 sysopen(my $lock, "$dir.lock", O_CREAT | O_RDWR | O_NOFOLLOW, 0600) or die "open lab lock: $!\n";
 if ($op !~ /\A(?:open|status|logs|usage)\z/) {
@@ -106,6 +116,16 @@ if ($op eq 'start') {
         collect();
         sleep 5;
     }
+ } elsif ($op eq 'benchmark-import') {
+    # Only the generated numeric line protocol reaches the disposable lab.
+    open my $fh,'|-',@compose,'exec','-T','influxdb','influx','write','--host','http://localhost:8086','--org','lab','--bucket','resolver-lab','--precision','s' or die "open InfluxDB import: $!\n";
+    print {$fh} $benchmark_lp or die "write benchmark metrics: $!\n";
+    close $fh or die "InfluxDB import failed\n";
+    -d "$dir/dashboards" && !-l "$dir/dashboards" && !-l "$dir/dashboards/benchmark.json" or die "unsafe dashboard path\n";
+    write_file("$dir/dashboards/benchmark.json",read_file("$RealBin/grafana-benchmark-flux.json"),0644);
+    my $url=url(); $url =~ s{/d/unbound-recursive-snapshot\z}{/d/unbound-recursive-benchmark};
+    print "Imported $benchmark_run. Grafana: $url (select benchmark time range; provisioning polls for changes).\n";
+    run('open',$url) if $^O eq 'darwin';
 } elsif ($op eq 'status') { compose('ps'); }
 elsif ($op eq 'logs') { compose('logs','--tail=50'); }
 elsif ($op eq 'usage') { compose('exec','-T','influxdb','du','-sk','/var/lib/influxdb2','/etc/influxdb2'); }

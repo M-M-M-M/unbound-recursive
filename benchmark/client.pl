@@ -23,7 +23,7 @@ if ($action eq 'probe' && @args==2) {
     }
     die "fixture/recovery probe failed for $proto\n";
 }
-if ($action eq 'phase' && @args==5) {
+if ($action eq 'phase' && (@args==5 || @args==8)) {
     print encode_json(run_phase($address,5353,@args)),"\n";
     exit 0;
 }

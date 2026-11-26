@@ -255,6 +255,9 @@ or dashboard is copied only at first creation; clean and restart to adopt
 new definitions. The 24-hour retention setting is not a verified expiry test.
 `monitoring-usage` includes storage overhead and does not by itself establish
 per-day growth; measure before and after a controlled interval. Do not publish
-logs or credentials. Visualizing the separate benchmark workload in Grafana
-requires a later integration; do not interpret synthetic liveness traffic as a
-performance test.
+logs or credentials. Dev14.2 adds `make benchmark-monitoring REPORT=...`
+for post-run import into a separate dashboard; see [performance](PERFORMANCE.md).
+This uses the lab InfluxDB CLI, not production metrics, and does not connect
+benchmark and monitoring networks. Stop foreground traffic before import.
+Do not interpret synthetic liveness traffic as a performance test. Live
+benchmark streaming is not implemented.

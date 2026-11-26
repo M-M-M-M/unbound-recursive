@@ -11,6 +11,8 @@ use JSON::PP qw(decode_json encode_json);
 use Time::HiRes qw(sleep time);
 use lib "$FindBin::Bin/lib";
 use ProjectTest qw(run_command read_bytes write_bytes);
+use lib "$FindBin::Bin/../monitoring";
+use BenchmarkMetrics qw(report_lines);
 plan skip_all => 'opt in with make test-monitoring' unless ($ENV{RUN_MONITORING_LIVE}//'') eq '1';
 $< != 0 or BAIL_OUT('run lab as non-root Docker operator');
 my $source=abs_path("$FindBin::Bin/..");
@@ -127,6 +129,30 @@ my $success=eval {
         ok($r->{code}==0 && $res && !$res->{error} && ($res->{status}//200)<400,"Grafana Flux panel: $panel->{title}")
             or diag($res ? ($res->{error}//'query failed') : 'query failed');
         if ($panel->{id}==1) { ok($res && @{$res->{frames}//[]},'Grafana query-rate returned data frames'); }
+    }
+    # Test the report ingestion path using synthetic, known aggregates. This
+    # does not run a benchmark or connect the benchmark and monitoring labs.
+    my $epoch=int(time())-5;
+    my $bench={schema=>3,profile=>'baseline',phases=>[{case=>'udp-warm',phase_epoch=>$epoch,
+        target_qps=>1000,offered_qps=>900,successful_qps=>890,requested=>10000,sent=>9000,
+        successes=>8900,failed=>100,not_attempted=>1000,cache_delta=>{'total.num.queries_ip_ratelimited'=>0},
+        latency_ms=>{p95=>0.5,p99=>1},resource_samples=>[{role=>'resolver',CPUPerc=>'2.5%',MemUsage=>'10MiB / 512MiB',elapsed=>2}]}]};
+    my $lp=report_lines($bench,'run-Test1234');
+    my $written=run_command([@compose,'exec','-T','influxdb','influx','write','--host','http://localhost:8086','--org','lab','--bucket','resolver-lab','--precision','s'],$lp,30);
+    is($written->{code},0,'import synthetic benchmark report into isolated bucket') or die 'benchmark write failed';
+    my $bench_filter='from(bucket: "resolver-lab") |> range(start: -10m) |> filter(fn: (r) => r._measurement == "unbound_benchmark_phase" and r._field == "successful_qps" and r.run == "run-Test1234")';
+    is(query($bench_filter.' |> last() |> keep(columns: ["_value"])'),890,'benchmark goodput stored without conversion');
+    is(query($bench_filter.' |> last() |> map(fn: (r) => ({_value: int(v: r._time) / 1000000000}))'),$epoch,'benchmark source phase timestamp preserved');
+    my $bench_dash=decode_json(read_bytes("$source/monitoring/grafana-benchmark-flux.json"));
+    write_bytes("$dir/dashboards/benchmark.json",encode_json($bench_dash));
+    chmod 0644,"$dir/dashboards/benchmark.json" or die $!;
+    my $bench_api=poll(sub {my $r=command([@curl,"$url/api/dashboards/uid/unbound-recursive-benchmark"],20); $r->{code}?undef:$r->{stdout}},90);
+    ok(defined $bench_api,'Grafana provisions added benchmark dashboard') or die 'benchmark dashboard missing';
+    for my $panel (@{$bench_dash->{panels}}) {
+        my $payload=encode_json({from=>'now-10m',to=>'now',queries=>[{refId=>'A',datasource=>{uid=>'resolver-lab-flux',type=>'influxdb'},query=>$panel->{targets}[0]{query},intervalMs=>2000,maxDataPoints=>300}]});
+        my $r=run_command([@curl,'-H','Content-Type: application/json','--data-binary','@-',"$url/api/ds/query"],$payload,30);
+        my $json=eval {decode_json($r->{stdout})}; my $res=$json && $json->{results}{A};
+        ok($r->{code}==0 && $res && !$res->{error} && ($res->{status}//200)<400 && @{$res->{frames}//[]},"benchmark panel: $panel->{title}");
     }
     require_cmd([@compose,'restart','unbound'],'restart resolver');
     require_cmd([@compose,'up','-d','--wait','--wait-timeout','90','unbound'],'wait after restart');

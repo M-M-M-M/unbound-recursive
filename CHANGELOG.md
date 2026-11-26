@@ -7,6 +7,22 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 
 ## [Unreleased]
 
+### Fixed (dev14.2)
+
+- Add a real, local-only DNS fixture healthcheck (port 5354 and exact A answer)
+  and client process healthcheck for Compose `up --wait`. Retain startup logs,
+  errors and completed phase results even on failed CI runs.
+- Separate paced baseline and stress profiles (limits disabled only in the
+  disposable configuration) from production-like and rate-limit profiles.
+  Record requested, attempted, sent, skipped, failed and successful queries,
+  target versus actual offered rates, TCP EOF/timeout/I/O outcomes and
+  persistent TCP; add 10/30/60-second phases and recovery probes.
+- Add opt-in post-run report import and a separate five-panel Grafana dashboard
+  in the existing disposable monitoring lab; add live integration checks.
+  No connection between benchmark and monitoring networks, no production data.
+- Record operator-provided dev14.1 local report and both CI startup failures.
+  Production Dockerfile, resolver configuration and security policy unchanged.
+
 ### Fixed (dev14.1)
 
 - Replace host loopback port publication with a dedicated non-root Perl client

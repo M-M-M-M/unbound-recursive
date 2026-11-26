@@ -300,3 +300,24 @@ been executed here. The existing production image/configuration are unchanged.
 Preparation: 249 unit assertions passed under Linux, including 24 new
 benchmark-lab assertions. The Perl entry points compile; Docker and live
 Compose qualification remain pending.
+
+## dev14.2 corrective qualification
+
+Dev14.1 operator report: AMD64/ARM64 CI each passed the 25 network assertions,
+then failed at `compose up --wait` because the fixture had no healthcheck.
+The local ARM64 schema-2 report shows 8,000 requested, 7,645 attempted,
+5,467 successes, 2,178 failed attempts and 355 unattempted. In each phase
+failed attempts match the aggregate IP-limit counter delta; recovery is true.
+This supports the limiter hypothesis, not individual packet attribution or
+unlimited throughput. Monitoring and build workflows were reported successful.
+
+Dev14.2 adds independent load profiles, fixed fixture healthcheck, persistent
+TCP, resource/phase reporting and post-run Grafana import. Linux preparation:
+285 offline assertions across 14 files passed; real UDP/TCP loopback and
+persistent socket tests run, Docker inspection and healthcheck parser use
+mocks. Docker unavailable here. Re-run the full local routine, native CI smoke,
+then opt-in `make benchmark`, `make benchmark-production`,
+`make benchmark-ratelimit`, `make benchmark-stress`. Import a completed report
+into Grafana and retain evidence. The live monitoring test adds nine assertions
+for benchmark import and five dashboard queries (57 total if all run).
+Production image, resolver settings and CVE policy are unchanged.

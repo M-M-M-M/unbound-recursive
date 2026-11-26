@@ -1,0 +1,17 @@
+use v5.26;
+use strict;
+use warnings;
+use Test::More;
+use FindBin;
+use lib "$FindBin::Bin/../monitoring";
+use BenchmarkMetrics qw(report_lines);
+use Storable qw(dclone);
+my $p={case=>'udp-warm',phase_epoch=>1795680000,target_qps=>50,offered_qps=>50,successful_qps=>49,requested=>500,sent=>500,successes=>490,failed=>10,not_attempted=>0,cache_delta=>{'total.num.queries_ip_ratelimited'=>0},latency_ms=>{p95=>0.5,p99=>1},resource_samples=>[{role=>'resolver',CPUPerc=>'2.5%',MemUsage=>'10MiB / 512MiB',elapsed=>2.4}]};
+my $r={schema=>3,profile=>'baseline',phases=>[$p]};
+my $lp=report_lines($r,'run-Abcd1234');
+like($lp,qr/unbound_benchmark_phase,run=run-Abcd1234,profile=baseline,case=udp-warm .*successful_qps=49.*1795680000/,'phase metrics preserve timestamp');
+like($lp,qr/role=resolver cpu_percent=2.5,memory_bytes=10485760 1795680002/,'resource samples preserve role and time');
+for my $bad ("bad\nmeasurement",'run-abc,xyz') {ok(!eval {report_lines($r,$bad);1},'reject unsafe run tag');}
+my $b=dclone($r); $b->{phases}[0]{target_qps}="1\nmeasurement"; ok(!eval {report_lines($b,'run-Abcd1234');1},'reject line injection');
+$b=dclone($r); $b->{schema}=2; ok(!eval {report_lines($b,'run-Abcd1234');1},'reject old schema');
+done_testing;

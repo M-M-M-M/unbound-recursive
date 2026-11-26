@@ -27,8 +27,14 @@ services:
     cap_drop: [ALL]
     security_opt: [no-new-privileges:true]
     network_mode: 'service:unbound'
-    volumes: ['./fixture.conf:/etc/unbound/fixture.conf:ro']
-    healthcheck: {disable: true}
+    volumes:
+      - ./fixture.conf:/etc/unbound/fixture.conf:ro
+      - ./fixture-healthcheck.sh:/bench-healthcheck.sh:ro
+    healthcheck:
+      test: [CMD, /bin/sh, /bench-healthcheck.sh]
+      interval: 2s
+      timeout: 5s
+      retries: 20
     mem_limit: 128m
     cpus: 0.5
     pids_limit: 32
@@ -43,6 +49,11 @@ services:
     tmpfs:
       - /tmp:uid=10001,gid=10001,mode=0700,size=32m
     networks: [isolated]
+    healthcheck:
+      test: [CMD, perl, -e, "exit 0"]
+      interval: 2s
+      timeout: 3s
+      retries: 10
     mem_limit: 256m
     cpus: 2.0
     pids_limit: 64
