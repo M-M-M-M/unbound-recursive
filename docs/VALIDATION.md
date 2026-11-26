@@ -208,3 +208,23 @@ instance and [monitoring qualification](MONITORING.md#preferred-stats-only-file-
 Manually dispatch the revised re-scan workflow with the dev8 digest, then
 without input, confirm matching immutable manifest in both artifact records.
 Daily schedule, dev9 publication and real Linux host qualification remain pending.
+
+
+## dev10 verification and live deployment lab
+
+Dev10 local `make test-unit`: 150 assertions passed (including 30 deployment
+mock tests). Tests check an actual signature type, wrong digest, exact workflow
+identity, each platform attestation, provenance policy invocation and fail-closed
+behavior. Mocked Cosign is not evidence of real cryptographic verification or
+CUE evaluation. Docker, Cosign and Telegraf/Grafana were not available in this
+preparation environment. No dev9 CI results were supplied; the dev8 evidence
+above remains the last confirmed real build. The new consumer verification
+job and independent promotion job are pending live CI qualification.
+
+Run `make test-unit`, then verify the published dev8 digest with dev10 before
+attempting an upgrade. Push the reviewed dev10 changes and check that the
+consumer verification job succeeds before `latest` moves. Run the manual
+**Qualify signed deployment and rollback** workflow with two distinct verified
+manifest digests; see [upgrading](UPGRADING.md). This also checks the stats-file
+export against real Unbound output; it does not qualify Telegraf or Grafana.
+No CVE policy or exception change has been made.

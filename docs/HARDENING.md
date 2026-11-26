@@ -16,8 +16,8 @@ by this document. Status reflects source inspection, not live validation.
 | CI trust | Dev8 CI passed; review pending | Pin action revisions, review dependency changes and minimum token permissions; no secrets on untrusted PRs |
 | Base image and Debian packages | Pinned in dev9; rebuild pending | Approved base digest; controlled refresh, record actual package versions and tested digests |
 | Vulnerability scan | Dev8 CI passed | Trivy or reviewed equivalent, scan both platform images and block unacceptable findings; documented exceptions with expiry |
-| SBOM and provenance | Dev8 CI passed; client verification pending | Generate per-platform inventories and attestations tied to exact digests |
-| Signature | Dev8 CI and M1 Cosign passed | Sign released manifest; verify identity, issuer and digest on pull |
+| SBOM and provenance | Dev8 CI passed; dev10 anonymous consumer gate pending | Generate per-platform inventories and attestations tied to exact digests |
+| Signature | Dev8 CI and M1 Cosign passed; dev10 signature-type check pending | Sign released manifest; verify identity, issuer and digest on pull |
 | Operator and host security | Pending | Approved administrative boundary, protected paths, firewall, SELinux, UID/GID, backup and rollback evidence |
 | Monitoring boundary | Dev9 stats-file handoff; live test pending | Stats-only export or explicitly authorized administrative socket; no application access to Docker |
 | Secrets | N/A core | No secrets needed; review approved secrets framework before adding authentication |

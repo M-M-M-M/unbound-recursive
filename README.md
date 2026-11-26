@@ -4,14 +4,16 @@ A self-hosted recursive DNS resolver based on Unbound and Debian slim. No public
 recursive forwarder is used. The default deployment is private, not a public
 DNS service. DNSSEC authenticates signed DNS data; it does not encrypt recursion.
 
-**Status: 0.1.0-dev9 — verified deployment tooling and stats-only monitoring, not production-qualified.**
+**Status: 0.1.0-dev10 — Cosign-only verification and disposable deployment qualification, not production-qualified.**
 Dev6 passed macOS M1 recovery tests; dev7 CI passed functional tests but was
 blocked by four CRITICAL findings. Dev8 replaces the in-container BIND DNS
 client with LDNS drill, retaining Debian upgrades, the CVE policy and empty
 exception register. Dev8 CI passed on both architectures, signed GHCR publication
 and operator Cosign verification succeeded. Dev9 pins the tested Debian base,
-adds digest-only update/rollback and stats-file handoff; live dev9 and host
-qualification remain required. DoH,
+adds digest-only update/rollback and stats-file handoff. Dev10 removes the
+GitHub CLI requirement, gates promotion on anonymous Cosign verification and
+adds a manually dispatched live update/rollback qualification. Live
+qualification and host review remain required. DoH,
 DoT, authentication, per-client monitoring and automated blocking remain planned.
 Hardening is mandatory from 0.1.0; the outstanding supply-chain checks are
 release blockers, not deferred to a later version.
@@ -90,7 +92,11 @@ public repository. No actual deployment has been inspected. See
 [deployment](docs/DEPLOYMENT.md) for digest-based updates, rollback, backup,
 permissions and acceptance checks. See [verified upgrades](docs/UPGRADING.md)
 for `scripts/deploy.pl verify latest`, explicit digest updates and rollback.
-No remote SSH deployment is required.
+No remote SSH deployment or GitHub CLI/token is required for public-image
+verification and pull. Cosign 3.1.4 (or a reviewed compatible newer version)
+verifies the signature, SLSA provenance and each platform SBOM from GHCR.
+See [qualification](docs/UPGRADING.md#qualification-before-production) for the
+manual CI workflow and disposable lab test.
 
 ## Monitoring and security
 

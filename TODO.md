@@ -8,14 +8,14 @@ Once action is done, remove the priority number.
 ## 0.1.0 — security-first release gates
 
 - [ ] Review all remaining HIGH CVEs and reachable code; LDNS CVE-2026-10846 initial triage recorded; no exceptions. 0️⃣
-- [ ] Review full host hardening reference, pinned Actions and transitive installers; qualify pinned base refresh and dev9 build. 1️⃣
-- [ ] Qualify dev9 client provenance and both SBOM verifications; run revised scheduled/manual re-scan. 2️⃣
-- [ ] Qualify dev9 on macOS M1, both CI architectures and Linux amd64 production-like host. 3️⃣
+- [ ] Review full host hardening reference, pinned Actions and transitive installers; qualify pinned base refresh and dev10 build. 1️⃣
+- [ ] Qualify dev10 anonymous consumer gate, provenance and both platform SBOM verifications; run revised scheduled/manual re-scan. 2️⃣
+- [ ] Qualify dev10 on macOS M1, both CI architectures and Linux amd64 production-like host. 3️⃣
 - [ ] Verify non-root effective privileges, protected deployment paths, SELinux, resource limits, firewall and Docker routes. 4️⃣
 - [ ] Verify first-start state permissions, trust anchor persistence/rollover and restart. 5️⃣
 - [ ] Probe IPv4/IPv6 exposure and unauthorized isolated lab clients; check source-IP NAT behavior. 6️⃣
-- [ ] Audit installed package inventory; qualify dev9 verified update and rollback on isolated host, including failure recovery. 7️⃣
-- [ ] Qualify dev9 stats-only collection, Telegraf, InfluxDB and Grafana including stale data alerts. 8️⃣
+- [ ] Audit installed package inventory; run dev10 manual live deployment qualification on both native CI runners and isolated host, including failure recovery. 7️⃣
+- [ ] Qualify stats-only collection, Telegraf, InfluxDB and Grafana including stale data alerts. 8️⃣
 - [ ] Add deterministic DNSSEC-negative fixture and bounded resource/load tests. 9️⃣
 - [ ] Record all acceptance evidence and approve release before any production deployment. 🔟
 
@@ -49,3 +49,5 @@ Once action is done, remove the priority number.
 - [x] Dev8 CI on amd64/arm64 passed dependency guard, Trivy gate (0 CRITICAL, 0 blockers), SBOM/provenance, Cosign and GHCR promotion; operator Cosign verification passed. ARM64 size reduced from 152544990 to 142298403 bytes.
 - [x] Pin the tested Debian index digest; add reviewed-refresh docs and immutable re-scan selection (dev9, CI pending).
 - [x] Implement core Perl verified update/rollback and stats-only file export with offline TAP tests; live operator qualification remains pending.
+
+- [x] Remove GitHub CLI from verification; enforce an actual image signature, exact identity, signed hosted-runner provenance policy and per-platform SBOMs using Cosign; add anonymous pre-promotion gate and opt-in live update/rollback qualification (dev10; live checks pending).

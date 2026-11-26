@@ -7,6 +7,18 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 
 ## [Unreleased]
 
+### Changed (dev10)
+
+- Replace GitHub CLI verification with Cosign 3.1.4 for signatures, index
+  provenance and both CycloneDX platform attestations. Require an actual v3
+  image signature; check signed source workflow/ref and hosted-runner provenance.
+- Require a separate anonymous read-only consumer check before promotion;
+  keep GitHub-generated OCI attestations and the existing CVE policy.
+- Add an opt-in native dual-architecture deployment qualification workflow and
+  TAP suite for real update, deliberately failed acceptance and automatic rollback,
+  explicit rollback, backup checksums and real stats export. No production access.
+- Extend mocked verification tests and document compatibility and trust limits.
+
 ### Added (dev9)
 
 - Operator-only core Perl digest verification, explicit update and rollback;

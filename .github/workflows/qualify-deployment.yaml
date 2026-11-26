@@ -1,0 +1,46 @@
+name: Qualify signed deployment and rollback
+on:
+  workflow_dispatch:
+    inputs:
+      previous:
+        description: Previously published and approved manifest digest (sha256:...)
+        required: true
+        type: string
+      candidate:
+        description: Different published and approved manifest digest (sha256:...)
+        required: true
+        type: string
+permissions:
+  contents: read
+jobs:
+  qualification:
+    if: github.ref == 'refs/heads/main'
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: amd64
+            runner: ubuntu-24.04
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+      - name: Use fresh registry configuration
+        run: |
+          set -eu
+          config=$(mktemp -d)
+          printf 'DOCKER_CONFIG=%s\n' "$config" >> "$GITHUB_ENV"
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+      - uses: sigstore/cosign-installer@756fe2d284c7292c4e9b62c8a28f1e5629c59532 # v4.1.3
+        with:
+          cosign-release: v3.1.4
+      - name: Exercise signed update, failed acceptance, recovery, rollback and stats
+        env:
+          RUN_DEPLOY_LIVE: '1'
+          PREVIOUS_DIGEST: ${{ inputs.previous }}
+          CANDIDATE_DIGEST: ${{ inputs.candidate }}
+        run: prove -v tests/deploy-live.t

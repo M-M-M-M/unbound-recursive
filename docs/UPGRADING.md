@@ -1,4 +1,4 @@
-# Verified image updates and rollback (dev9)
+# Verified image updates and rollback (dev10)
 
 This is an operator-only helper for the **default loopback profile**, with the
 same Compose file and DNSSEC state schema across versions. Not an unattended
@@ -9,11 +9,12 @@ host first. No server address, credentials or remote SSH is needed.
 
 ## Prerequisites
 
-Use trusted Docker/Compose v2, Buildx, Perl 5.26+, Cosign and GitHub CLI with
-attestation support; check `gh auth status` and registry read access as the
-operator. Use your approved local authentication mechanism and minimum read
-permissions; never put tokens in `.env` or Git. See the official
-[gh verification manual](https://cli.github.com/manual/gh_attestation_verify).
+Use trusted Docker/Compose v2, Buildx, Perl 5.26+ and Cosign 3.1.4 (or a
+reviewed compatible newer version). The public image and its OCI attestations
+are read without a GitHub account, token, GitHub CLI or registry login.
+Keep the checked-in `security/github-provenance.cue` with the reviewed scripts.
+Use the default trusted Sigstore configuration and verify registry access as
+the operator. See [supply-chain security](SUPPLY-CHAIN.md).
 Run from a protected, operator-owned directory containing the reviewed
 `compose.yaml`, `scripts/` and `tests/` of this revision. All files/parents
 must be trusted and not writable by application accounts. `.env` must be a
@@ -30,14 +31,16 @@ run as the resolver or Telegraf account. No cron is installed.
 
 ```sh
 ./scripts/deploy.pl verify latest
-# Or verify the dev8 signed reference, without any changes to Docker containers:
+# Optional backward-compatibility test with the dev8 signed reference:
 ./scripts/deploy.pl verify sha256:1f174bcd92333948337b359a0773aaefbff1e50eeddc6c22a6003ac356562e81
 ```
 
 `verify` resolves `latest` exactly once, verifies Cosign on the index, GitHub
 provenance for the index, and both CycloneDX SBOM attestations using the two
-platform digests. It requires the exact repository/workflow and main ref,
-and rejects self-hosted runner attestations. The only successful stdout line
+platform digests using only Cosign. It requires the exact certificate identity
+and issuer, validates the signed provenance workflow/ref and requires the
+`github-hosted` runner field in the provenance predicate. This is not a
+certificate-extension check; see the supply-chain documentation. The only successful stdout line
 is the immutable image reference; diagnostics are on stderr. It does not pull
 layers or deploy. Check the associated CI reports, current Trivy rescan, source
 revision, release gates and risk review before approving any digest. A valid
@@ -105,9 +108,26 @@ file replacement is not a guarantee of durability after host/power failure.
 ## Qualification before production
 
 - `prove -v tests/deploy.t` tests orchestration using mocked tools (no Docker).
-- On an isolated instance, install signed dev8; verify and update to a different
-  signed dev9 digest once published, compare `.env`, `docker compose images`,
-  actual image IDs, backup checksum, journal and DNSSEC state. Explicit rollback.
+- Once dev10 is published, dispatch **Qualify signed deployment and rollback**
+  on `main` in GitHub Actions. Supply two distinct signed, approved manifest
+  digests (for example dev8 and dev10, only if both pass the new verifier).
+  The read-only workflow runs on fresh native amd64/arm64 runners. It exercises
+  install, deliberate acceptance-test failure and automatic rollback, successful
+  update, backup checksum, real stats export, manual rollback and final integration.
+  No credentials, production host or remote deployment are involved.
+- The same test is available on a **disposable Docker host** with free port
+  1053 and subnet 172.30.53.0/24. Do not run alongside a real resolver; use a
+  trusted local Docker context. The test copies the reviewed files into a random
+  lab project, removes only its resources and retains local lab evidence.
+
+  ```sh
+  RUN_DEPLOY_LIVE=1 PREVIOUS_DIGEST=sha256:OLD_DIGEST \
+    CANDIDATE_DIGEST=sha256:NEW_DIGEST prove -v tests/deploy-live.t
+  ```
+
+  Replace both placeholders with exact 64-hex digests. Failed verification is a
+  hard stop; never bypass the attestation checks to migrate an older image.
+  `prove` without this opt-in skips the live lab. On CI the runner is disposable.
 - Verify a wrong digest/signature is refused before interruption. Exercise failed
   acceptance and rollback only in a disposable environment with a reviewed test
   fixture; do not sabotage the real resolver. Record recovery time.
@@ -116,5 +136,5 @@ file replacement is not a guarantee of durability after host/power failure.
 - Keep the previous resolver online while updating the other one. Never switch
   the host's only DNS to this service until bootstrap/recovery are qualified.
 
-Mock tests are not evidence that live GitHub CLI, Cosign, Compose, rollback or
+Mock tests are not evidence that live Cosign, Compose, rollback or
 host permissions work on the actual production hosts.

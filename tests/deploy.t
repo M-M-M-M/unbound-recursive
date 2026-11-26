@@ -32,8 +32,20 @@ my ($tool) = $0 =~ m{([^/]+)$};
 my $args = join(' ', @ARGV);
 open my $log, '>>', 'commands' or die $!; print {$log} "$tool $args\n"; close $log;
 my $old = 'sha256:' . 'a' x 64; my $new = 'sha256:' . 'b' x 64;
-if ($tool eq 'cosign') { exit(($ENV{FAIL_VERIFY}//'') && $args =~ /\Q$new\E/ ? 1 : 0); }
-if ($tool eq 'gh') { exit(($ENV{FAIL_ATTEST}//'') && $args =~ /cyclonedx/ ? 1 : 0); }
+if ($tool eq 'cosign') {
+    exit 1 if ($ENV{FAIL_VERIFY}//'') && $args =~ /\Q$new\E/;
+    if ($ARGV[0] eq 'verify-attestation') {
+        exit 1 if ($ENV{FAIL_ATTEST}//'') && $args =~ /cyclonedx/;
+        exit 1 if ($ENV{FAIL_PROVENANCE}//'') && $args =~ /slsa.dev/;
+        print "verified envelope\n" unless $ENV{EMPTY_ATTEST};
+        exit 0;
+    }
+    my ($d) = $args =~ /\@(sha256:[a-f0-9]{64})/;
+    my $type = $ENV{ONLY_PROVENANCE} ? 'https://slsa.dev/provenance/v1' : 'https://sigstore.dev/cosign/sign/v1';
+    $d = $old if $ENV{WRONG_DIGEST};
+    print encode_json([{critical=>{type=>$type,image=>{'docker-manifest-digest'=>$d}}}]);
+    exit 0;
+}
 if ($args =~ /imagetools inspect .*:latest/) { print encode_json({digest=>$new}); }
 elsif ($args =~ /imagetools inspect .*--raw/) { print encode_json({manifests=>[map {{digest=>'sha256:'.($_ eq 'amd64'?'c':'d') x 64,platform=>{os=>'linux',architecture=>$_}}} qw(amd64 arm64)]}); }
 elsif ($args =~ /compose -f compose.yaml ps -q/) { print "abcdef123456\n"; }
@@ -44,20 +56,31 @@ elsif ($args =~ /compose -f compose.yaml up /) { my ($d) = $ENV{UNBOUND_IMAGE} =
 exit 0;
 MOCK
 chmod 0755, 'bin/mock';
-for my $tool (qw(docker cosign gh)) { symlink 'mock', "bin/$tool" or die $!; }
+for my $tool (qw(docker cosign)) { symlink 'mock', "bin/$tool" or die $!; }
 local $ENV{PATH} = "$root/bin:$ENV{PATH}";
 local $ENV{BACKUP_DIR} = "$root/backups";
 sub invoke { return run_command([$^X, $source, @_], '', 30); }
 my $r = invoke('verify', 'latest');
 is($r->{code}, 0, 'verify latest succeeds');
 is($r->{stdout}, "$repo\@$new\n", 'immutable reference returned');
-like(read_bytes('commands'), qr/gh attestation verify .*cyclonedx/, 'platform SBOM checked');
+my $commands = read_bytes('commands');
+like($commands, qr/cosign verify-attestation .*slsa\.dev.*--policy .*github-provenance\.cue/, 'provenance and hosted-runner policy checked');
+for my $arch_digest ('c' x 64, 'd' x 64) {
+    like($commands, qr/cosign verify-attestation .*cyclonedx.*\@sha256:$arch_digest/, 'platform SBOM bound to exact digest');
+}
+like($commands, qr/--certificate-identity https:\/\/github\.com\/M-M-M-M\/unbound-recursive\/\.github\/workflows\/build\.yaml\@refs\/heads\/main/, 'exact certificate identity');
+unlike($commands, qr/^gh /m, 'no GitHub CLI');
+{ local $ENV{ONLY_PROVENANCE}=1; isnt(invoke('verify',$new)->{code},0,'provenance alone is not an image signature'); }
+{ local $ENV{WRONG_DIGEST}=1; isnt(invoke('verify',$new)->{code},0,'signature for wrong digest rejected'); }
+{ local $ENV{EMPTY_ATTEST}=1; isnt(invoke('verify',$new)->{code},0,'empty attestation output rejected'); }
 isnt(invoke('update', 'latest')->{code}, 0, 'mutable tag refused for update');
 write_bytes('commands','');
 { local $ENV{FAIL_VERIFY}=1; isnt(invoke('update',$new)->{code},0,'bad signature refused'); }
 unlike(read_bytes('commands'), qr/compose .* stop /, 'verification failure causes no stop');
 { local $ENV{FAIL_ATTEST}=1; isnt(invoke('update',$new)->{code},0,'bad SBOM refused'); }
 unlike(read_bytes('commands'), qr/compose .* stop /, 'attestation failure causes no stop');
+{ local $ENV{FAIL_PROVENANCE}=1; isnt(invoke('update',$new)->{code},0,'bad provenance refused'); }
+unlike(read_bytes('commands'), qr/compose .* stop /, 'provenance failure causes no stop');
 { local $ENV{FAIL_TEST}=$new; isnt(invoke('update',$new)->{code},0,'failed candidate returns failure'); }
 is(read_bytes('current'),$old,'automatic rollback restored old running digest');
 is(read_bytes('.env'),$env,'old .env retained');

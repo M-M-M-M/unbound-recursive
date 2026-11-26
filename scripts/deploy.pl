@@ -6,6 +6,7 @@ use warnings;
 use JSON::PP qw(decode_json encode_json);
 use File::Temp qw(tempfile);
 use Digest::SHA qw(sha256_hex);
+use FindBin qw($RealBin);
 
 my $repo = 'ghcr.io/m-m-m-m/unbound-recursive';
 my $source = 'M-M-M-M/unbound-recursive';
@@ -34,12 +35,34 @@ sub capture {
     return $out;
 }
 sub trim { my ($s) = @_; $s =~ s/\s+\z//; return $s; }
+sub cosign_identity {
+    return ('--certificate-identity', "https://github.com/$workflow\@refs/heads/main",
+        '--certificate-oidc-issuer', 'https://token.actions.githubusercontent.com',
+        '--check-claims=true');
+}
 sub attest {
     my ($ref, $predicate) = @_;
-    my $out = capture('gh', 'attestation', 'verify', "oci://$ref", '--repo', $source,
-        '--signer-workflow', $workflow, '--source-ref', 'refs/heads/main',
-        '--predicate-type', $predicate, '--deny-self-hosted-runners');
-    print STDERR $out;
+    my @policy = $predicate eq 'https://slsa.dev/provenance/v1'
+        ? ('--policy', "$RealBin/../security/github-provenance.cue") : ();
+    my $out = capture('cosign', 'verify-attestation', cosign_identity(),
+        '--type', $predicate, @policy, $ref);
+    length($out) or fail("empty verified attestation: $predicate");
+    print STDERR "Verified $predicate for $ref\n";
+}
+sub verify_signature {
+    my ($ref, $d) = @_;
+    my $report = decode_json(capture('cosign', 'verify', cosign_identity(), '--output', 'json', $ref));
+    ref($report) eq 'ARRAY' or fail('invalid signature report');
+    # Cosign v3 can also return provenance as a verified object. Require an
+    # actual container signature, not merely an attestation over the subject.
+    my $matched = grep {
+        ref($_) eq 'HASH' && ref($_->{critical}) eq 'HASH' &&
+        ($_->{critical}{type} // '') eq 'https://sigstore.dev/cosign/sign/v1' &&
+        ref($_->{critical}{image}) eq 'HASH' &&
+        ($_->{critical}{image}{'docker-manifest-digest'} // '') eq $d
+    } @$report;
+    $matched or fail('no verified Cosign v3 image signature for the requested digest');
+    print STDERR "Verified image signature: $ref\n";
 }
 sub verify {
     my ($d) = @_;
@@ -50,8 +73,7 @@ sub verify {
     $d = digest($d);
     my $ref = "$repo\@$d";
     # All later operations use the immutable index, never the mutable tag.
-    print STDERR capture('cosign', 'verify', '--certificate-identity', "https://github.com/$workflow\@refs/heads/main",
-        '--certificate-oidc-issuer', 'https://token.actions.githubusercontent.com', $ref);
+    verify_signature($ref, $d);
     attest($ref, 'https://slsa.dev/provenance/v1');
     my $idx = decode_json(capture('docker', 'buildx', 'imagetools', 'inspect', $ref, '--raw'));
     ref($idx->{manifests}) eq 'ARRAY' && @{$idx->{manifests}} == 2 or fail('expected exactly two platform manifests');

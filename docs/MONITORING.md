@@ -11,7 +11,7 @@ Telegraf native `inputs.unbound` is optional and needs a compatible
 The control socket grants **administrative control**, not just read-only stats;
 a read-only bind mount does not make socket commands read-only. Only use this
 example after explicitly approving the monitoring account for that capability.
-A stats-only exporter is planned for installations with a stricter boundary.
+Prefer the stats-only exporter below for installations with a stricter boundary.
 Keep the socket inaccessible to network clients. Do not set use_sudo=true.
 
 1. Check numeric UID/GID 10001 availability, Telegraf identity and SELinux.
@@ -118,3 +118,29 @@ write/socket/Docker access, field names, timestamp handling, and InfluxDB bucket
 retention. Import the dashboard, generate queries, observe rates and latency,
 stop/restart the resolver, test stale timestamps and alerts. No Grafana or
 Telegraf daemon was available in the dev9 preparation environment.
+
+
+### Freshness check (InfluxDB 2.x / Flux)
+
+Use the source timestamp, not the Telegraf poll time, to alert on stale data.
+For a 30-second export interval, a starting threshold is 120 seconds. The
+following example returns the age in seconds of the last query-counter sample
+for each host; configure Grafana to alert on age > 120 and on No Data/Error.
+Set the actual bucket and verify per-host alert labels. Do not aggregate across
+hosts before finding the last sample: a healthy host could hide a failed one.
+
+```flux
+from(bucket: "YOUR_BUCKET")
+  |> range(start: -10m)
+  |> filter(fn: (r) => r._measurement == "unbound_snapshot" and
+      r._field == "total_num_queries" and r.service == "unbound-recursive")
+  |> group(columns: ["host"])
+  |> last()
+  |> map(fn: (r) => ({r with _value: float(v: int(v: now()) - int(v: r._time)) / 1000000000.0}))
+```
+
+This query is a proposed alert recipe, not a tested Grafana alert. With a
+completely missing host, a per-host series may disappear; configure an expected
+host inventory or independent per-host probe as well. Dev10's disposable
+signed-deployment lab exports actual stats during the update test. It does not
+install Telegraf or write to any operator InfluxDB instance.
