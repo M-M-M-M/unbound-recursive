@@ -29,9 +29,9 @@ sub write_bytes {
 sub run_command {
     my ($argv, $input, $timeout, $watchdog) = @_;
     $timeout //= 180;
-    my ($in) = tempfile(UNLINK => 1);
-    my ($out) = tempfile(UNLINK => 1);
-    my ($err) = tempfile(UNLINK => 1);
+    my $in = File::Temp->new(UNLINK => 1);
+    my $out = File::Temp->new(UNLINK => 1);
+    my $err = File::Temp->new(UNLINK => 1);
     print {$in} ($input // '') or die "write input: $!";
     seek $in, 0, 0 or die "seek input: $!";
     my $pid = fork();
