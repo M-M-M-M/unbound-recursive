@@ -7,6 +7,19 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 
 ## [Unreleased]
 
+### Fixed (dev16.1)
+
+- Scope File::Temp command capture handles to each invocation; regressions
+  exercise 200 commands and 40 exceptional exits under a 64-descriptor limit.
+- Record per-reason async UDP skipped slots and dispatch/wakeup delays without
+  catch-up bursts; retain exact schedule accounting and unchanged thresholds.
+- Add independent 1,000/10,000 q/s soak profiles and explicit PASS,
+  INCONCLUSIVE and FAIL qualification, with failure precedence and saved
+  recovery evidence. Both non-pass outcomes fail Make.
+- Expose Grafana polling and cleanup diagnostics; add a retention-only test.
+- Record corrected dev16 operator evidence; no production image, security
+  policy, rate limit, or CI runner architecture changes.
+
 ### Added (dev16)
 
 - Validate resource records, journal Docker stats errors, retry missing roles,

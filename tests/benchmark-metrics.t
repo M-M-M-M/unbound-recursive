@@ -17,4 +17,8 @@ $b=dclone($r); $b->{schema}=2; ok(!eval {report_lines($b,'run-Abcd1234');1},'rej
 $b=dclone($r); $b->{profile}='soak-day';
 $b->{phases}[0]{resource_samples}=[map {{role=>'resolver',CPUPerc=>'2.5%',MemUsage=>'10MiB / 512MiB',elapsed=>$_*30}} 1..101];
 like(report_lines($b,'run-Abcd1234'),qr/profile=soak-day/,'long soak report import');
+for my $profile (qw(soak-1000 soak-10000)) {
+    $b->{profile}=$profile;
+    like(report_lines($b,'run-Abcd1234'),qr/profile=\Q$profile\E,/,"independent $profile import");
+}
 done_testing;

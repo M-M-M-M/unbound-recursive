@@ -12,7 +12,7 @@ sub number {
 }
 sub report_lines {
     my ($r,$run)=@_;
-    ref($r) eq 'HASH' && ($r->{schema}//0)==3 && ($r->{profile}//'') =~ /\A(?:quick|baseline|production|ratelimit|stress|soak|soak-day|soak-check)\z/ &&
+    ref($r) eq 'HASH' && ($r->{schema}//0)==3 && ($r->{profile}//'') =~ /\A(?:quick|baseline|production|ratelimit|stress|soak|soak-day|soak-check|soak-1000|soak-10000)\z/ &&
         $run =~ /\Arun-[A-Za-z0-9_]{8}\z/ && ref($r->{phases}) eq 'ARRAY' && @{$r->{phases}}>=1 && @{$r->{phases}}<=10
         or die "invalid benchmark report\n";
     my @lines;

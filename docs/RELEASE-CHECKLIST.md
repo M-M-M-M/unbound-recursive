@@ -1,19 +1,19 @@
 # 0.1.0 release candidate evidence checklist
 
 This is an operator sign-off checklist, not release approval. The production
-image and security policy are unchanged in dev16. See [validation](VALIDATION.md),
+image and security policy are unchanged in dev16.1. See [validation](VALIDATION.md),
 [hardening](HARDENING.md), [deployment](DEPLOYMENT.md), [monitoring](MONITORING.md)
 and [performance evidence](PERFORMANCE-EVIDENCE.md).
 
 | Gate | Last known evidence | Remaining action |
 |---|---|---|
-| Core and state recovery | dev15 local TAP passed; operator reported all three CI workflows passed | Repeat dev16 local and CI checks; verify on representative Linux hosts |
+| Core and state recovery | dev16 corrected 362 unit assertions passed; dev15 CI reported passed | Repeat dev16.1 local and CI checks; verify on representative Linux hosts |
 | Network and process hardening | dev15 isolated IPv4 ACL and process checks passed | Host firewall, IPv6 exposure, NAT/source IP, SELinux and numeric ownership |
 | Signed immutable deployment and rollback | dev12 operator reported two signed index deployment/rollback qualification passed | Verify current approved index, SBOM, provenance and recovery on deployment host |
 | DNSSEC | Local state recovery and integration passed | Deterministic negative validation and anchor rollover/migration evidence |
-| Endurance DNS | dev15 60 min / 10 min DNS gates passed | Repeat with full resource coverage; 24 h at 100 q/s pending |
+| Endurance DNS | dev16 corrected full 70 min coverage; 1k PASS, 10k under-driven | Repeat independent 10k phase; 24 h at 100 q/s pending |
 | Native comparison | ARM64 measurements recorded | Manual comparison on native AMD64 and ARM64, repeat on controlled hosts |
-| Monitoring | dev15 57 assertions passed, dashboard shown | dev16 opt-in alert state and retention test; notification delivery, absence/errors, daily growth |
+| Monitoring | dev16 corrected 72 operations assertions passed | dev16.1 regression; notification delivery, absence/errors, daily growth |
 | CVE review | Historical dev8 review; no current raw scan reports | Obtain current immutable-index scans; review all HIGH findings and reachable code |
 | Documentation | Existing runbooks and dev16 checklist | Review all operator commands, deployment paths and evidence before approval |
 
@@ -34,7 +34,7 @@ configuration, credentials or raw private operational logs.
 
 1. Review the source diff and local/CI regression results; inspect the new
    two-minute sampling check. Stop if resource evidence is incomplete.
-2. Repeat the 70-minute soak with the watchdog, then the independent day test
+2. Repeat the independent 10k phase with emission diagnostics, then the independent day test
    on an uninterrupted machine. Retain JSON/CSV/JSONL outside Grafana retention.
 3. Run monitoring operations qualification and the manual delivery/absence/
    storage checks. Run the native comparison workflow manually if useful.

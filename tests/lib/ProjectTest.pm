@@ -3,7 +3,7 @@ use v5.26;
 use strict;
 use warnings;
 use Exporter 'import';
-use File::Temp qw(tempfile);
+use File::Temp ();
 use IO::Select;
 use POSIX qw(:sys_wait_h setpgid);
 use Time::HiRes qw(time sleep clock_gettime CLOCK_MONOTONIC);

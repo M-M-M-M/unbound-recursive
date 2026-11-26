@@ -358,3 +358,21 @@ available in preparation; no new live sampler, Compose, Grafana or InfluxDB
 validation was executed. No new CVE scan or live architecture comparison
 was performed. Source is the delivered dev15 archive, not a synchronized
 checkout. Review the diff against the real repository before committing.
+
+## dev16.1
+
+Source: delivered dev16 archive plus the reported local File::Temp fix. The
+operator's corrected dev16 logs show 362 unit assertions, all 72 monitoring
+operations assertions and the sampling smoke passed. The full 70-minute
+report is recorded in [performance evidence](PERFORMANCE-EVIDENCE.md).
+The 1k phase met the gates; the 10k phase was under-driven, with all sent
+queries valid.
+
+Preparation: Linux `make test-unit` passed 383 assertions in 20 files. The
+command-runner regression failed before the fix and passed afterward at a
+64-descriptor limit with 200 successful captures and 40 exceptional exits.
+Independent profile definitions, verdict precedence and skip accounting
+are tested offline; UDP loopback with deliberate loss remains tested.
+Docker is unavailable here: the new CLI profiles, sampler under actual
+Docker load, retention-only path and revised live diagnostics are pending
+operator validation. No current security scan or CI run was performed.

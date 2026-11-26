@@ -67,3 +67,11 @@ The 10,000 q/s synthetic target is sufficient; prioritize complete resource
 coverage, 24-hour stability, actual monitoring qualification and security
 review over higher exploratory load. No tag until the remaining gates are
 reviewed and approved.
+
+## dev16.1 correction
+
+Retain the 99% generator gate, repeat only the independent 10k phase before
+the 24-hour test, and review its skip diagnostics. Do not repeat the already
+qualified 60-minute phase solely because the second phase was under-driven.
+The corrected dev16 monitoring operations passed; external notifications,
+daily storage and host/security evidence remain pending.

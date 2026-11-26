@@ -6,7 +6,7 @@ use warnings;
 use FindBin qw($RealBin);
 use lib $RealBin, "$RealBin/../tests/lib";
 use DNSBench qw(now);
-use Profiles qw(profile_cases resolver_config validate_soak);
+use Profiles qw(profile_cases resolver_config soak_verdict is_soak);
 use LabNetwork qw(validate_lab_network);
 use RunIdentity qw(project_name);
 use ResourceEvidence qw(parse_stats coverage clock_anomaly container_healthy check_heartbeat);
@@ -36,6 +36,7 @@ my $sampler;
 my $built=0;
 my $started=0;
 my $report;
+my $qualification_exit=1;
 my $out="$root/benchmark-results";
 -l $out and die "unsafe reports directory\n";
 make_path($out,{mode=>0700});
@@ -234,27 +235,47 @@ my $ok=eval {
     probe($address,'udp','warm.bench.test.'); probe($address,'tcp','warm.bench.test.');
     my @phases;
     for my $case (@cases) {
-        push @phases,phase(@$case,$address,\%ids);
+        my $p=phase(@$case,$address,\%ids);
+        if (is_soak($profile)) {
+            $p->{qualification}=soak_verdict($p,$profile eq 'soak-check');
+            printf "%s: %s%s\n",$p->{case},$p->{qualification}{status},join('',map {"; $_"} @{$p->{qualification}{reasons}});
+        }
+        if (my $d=$p->{emission_diagnostics}) {
+            printf "%s: omitted slots expired=%d pending=%d id=%d tail=%d; max wakeup delay %.3f ms\n",$p->{case},@$d{qw(expired_slots pending_limit id_collision tail_slots wakeup_delay_max_ms)};
+        }
+        push @phases,$p;
         write_bytes("$dest/phases.json.tmp",JSON::PP->new->canonical->pretty->encode(\@phases));
         rename "$dest/phases.json.tmp","$dest/phases.json" or die "publish completed phases: $!\n";
     }
     sleep 2;
-    probe($address,'udp','recovery.bench.test.'); probe($address,'tcp','recovery.bench.test.');
+    my $recovered=eval {probe($address,'udp','recovery.bench.test.'); probe($address,'tcp','recovery.bench.test.'); 1};
+    my $recovery_error=$@;
     my @os=uname();
-    $report={schema=>3,client_image_id=>$client_meta->{Id},client_image_bytes=>$client_meta->{Size},client_image_architecture=>$client_meta->{Architecture},network=>'internal bridge; no published ports',utc=>strftime('%Y-%m-%dT%H:%M:%SZ',gmtime),os=>$os[0],architecture=>$os[4],image_id=>$image->{Id},image_bytes=>$image->{Size},image_architecture=>$image->{Architecture},docker_version=>cmd(['docker','version','--format','{{.Server.Version}}']),profile=>$profile,recovery=>JSON::PP::true,phases=>\@phases};
-    write_bytes("$dest/report.json",JSON::PP->new->canonical->pretty->encode($report));
-    my $header="case,protocol,cache,tcp_mode,udp_mode,workers,target_qps,offered_qps,requested,attempted,sent,not_attempted,failed,successes,seconds,successful_qps,ip_ratelimited,min_ms,mean_ms,median_ms,p95_ms,p99_ms,max_ms\n";
+    $report={schema=>3,client_image_id=>$client_meta->{Id},client_image_bytes=>$client_meta->{Size},client_image_architecture=>$client_meta->{Architecture},network=>'internal bridge; no published ports',utc=>strftime('%Y-%m-%dT%H:%M:%SZ',gmtime),os=>$os[0],architecture=>$os[4],image_id=>$image->{Id},image_bytes=>$image->{Size},image_architecture=>$image->{Architecture},docker_version=>cmd(['docker','version','--format','{{.Server.Version}}']),profile=>$profile,recovery=>($recovered?JSON::PP::true:JSON::PP::false),phases=>\@phases};
+    if (is_soak($profile)) {
+        my $status='PASS';
+        for my $p (@phases) {
+            my $v=$p->{qualification}{status};
+            $status='FAIL' if $v eq 'FAIL';
+            $status='INCONCLUSIVE' if $v eq 'INCONCLUSIVE' && $status ne 'FAIL';
+        }
+        $report->{qualification}=$recovered?$status:'FAIL';
+    }
+    write_bytes("$dest/report.json.tmp",JSON::PP->new->canonical->pretty->encode($report));
+    rename "$dest/report.json.tmp","$dest/report.json" or die "publish report: $!\n";
+    my $header="case,protocol,cache,tcp_mode,udp_mode,workers,target_qps,offered_qps,requested,attempted,sent,not_attempted,failed,successes,seconds,successful_qps,ip_ratelimited,min_ms,mean_ms,median_ms,p95_ms,p99_ms,max_ms,qualification\n";
     my $csv=$header;
     my $md="# Synthetic DNS benchmark\n\nImage ID: `$report->{image_id}`\n\n| Case | Successes / requested | Successful qps | p95 ms | p99 ms |\n|---|---:|---:|---:|---:|\n";
     for my $p (@phases) {
         my $lat=$p->{latency_ms}//{};
-        $csv.=join(',',@$p{qw(case protocol cache tcp_mode)},$p->{udp_mode}//'',@$p{qw(workers target_qps offered_qps requested attempted sent not_attempted failed successes seconds successful_qps)},$p->{cache_delta}{'total.num.queries_ip_ratelimited'}//0,map {$lat->{$_}//''} qw(min mean median p95 p99 max))."\n";
+        $csv.=join(',',@$p{qw(case protocol cache tcp_mode)},$p->{udp_mode}//'',@$p{qw(workers target_qps offered_qps requested attempted sent not_attempted failed successes seconds successful_qps)},$p->{cache_delta}{'total.num.queries_ip_ratelimited'}//0,(map {$lat->{$_}//''} qw(min mean median p95 p99 max)),($p->{qualification} ? $p->{qualification}{status} : ''))."\n";
         $md.=sprintf("| %s | %d / %d | %.1f | %s | %s |\n",@$p{qw(case successes requested successful_qps)},map {defined($_)?sprintf('%.3f',$_):'n/a'} @$lat{qw(p95 p99)});
     }
+    $md.="\nQualification: **$report->{qualification}**\n" if is_soak($profile);
     $md.="\nContainer-to-container internal bridge; loopback forwarding fixture only, not Internet recursion capacity. Transport mode is per phase; persistent TCP reconnects on errors. Async UDP percentile upper bounds have variable histogram resolution; see JSON. Resolver and client resources are sampled separately, not peaks.\n";
     write_bytes("$dest/report.csv",$csv); write_bytes("$dest/report.md",$md);
     print "Reports: $dest\n";
-    if ($profile =~ /\A(?:baseline|stress|soak|soak-day|soak-check)\z/) {
+    if ($profile =~ /\A(?:baseline|stress)\z/) {
         for my $p (@phases) {
             $p->{cache_delta}{'total.num.queries_ip_ratelimited'}==0 or die "unexpected IP limiter activity: $p->{case}\n";
         }
@@ -266,16 +287,10 @@ my $ok=eval {
             else { $p->{offered_qps}>100 && $limited>0 or die "rate limiting not demonstrated: $p->{case}\n"; }
         }
     }
-    if ($profile =~ /\A(?:soak|soak-day|soak-check)\z/) {
-        for my $p (@phases) {
-            if ($profile eq 'soak-check') {
-                # Qualify the sampler on shared runners, not their timing performance.
-                $p->{sent}>0 && $p->{successes}==$p->{sent} && $p->{attempted}==$p->{sent}
-                    or die "sampling smoke DNS failure: $p->{case}\n";
-            } else { validate_soak($p); }
-            $p->{resource_coverage}{complete} or die "incomplete resource coverage: $p->{case}\n";
-            $p->{runtime_healthy} or die "container restart, exit or OOM observed: $p->{case}\n";
-        }
+    die "recovery probes failed: $recovery_error" unless $recovered;
+    if (is_soak($profile) && $report->{qualification} ne 'PASS') {
+        $qualification_exit=$report->{qualification} eq 'INCONCLUSIVE'?2:1;
+        die "$report->{qualification}: soak qualification; see report.json for phase reasons\n";
     }
     if ($quick) {
         for (@phases) { $_->{successes}==$_->{requested} or die "smoke test failed: $_->{case}\n"; }
@@ -297,4 +312,4 @@ if (!$ok) {
 if ($started) { eval {compose('down','--volumes','--remove-orphans')}; if ($@) {warn "cleanup failed; lab retained at $dir: $@"; exit 1;} }
 if ($built) { eval {cmd(['docker','image','rm',$client_image],30)}; warn "client image cleanup failed: $@" if $@; }
 remove_tree($dir,{safe=>1});
-die $error unless $ok;
+if (!$ok) { warn($error =~ /\A(?:FAIL|INCONCLUSIVE):/?$error:"FAIL: $error"); exit $qualification_exit; }

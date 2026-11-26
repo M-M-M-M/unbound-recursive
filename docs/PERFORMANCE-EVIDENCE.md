@@ -93,3 +93,36 @@ protocol succeeded without limiting. This supports intended limiter behavior;
 individual packet attribution and a strict exact-100-q/s cap are not claimed.
 The prior 50-q/s TCP p99 was 11.212 ms in this run; latency objectives are
 qualified under the specific endurance workload, not assumed for every profile.
+
+## dev16 with command-runner correction — ARM64, 26 November 2026
+
+Source: operator-supplied complete soak JSON, resource journals and terminal
+output; same synthetic internal bridge and 142,298,403-byte resolver image.
+The original dev16 run aborted with `Too many open files` and the per-role
+watchdog. A low-descriptor-limit regression reproduced exhaustion in the
+shared Perl command runner. Using scoped File::Temp objects fixed the issue
+in the operator's repeated 70-minute run; there were no sampler diagnostics.
+
+| Target / duration | Planned | Sent / valid | Offered (q/s) | Goodput (q/s) | p99 (ms) | Max latency (ms) |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| 1,000 / 60 min | 3,600,000 | 3,576,323 / 3,576,323 | 993.42 | 993.42 | 3.39 | 863.31 |
+| 10,000 / 10 min | 6,000,000 | 5,856,590 / 5,856,590 | 9,760.98 | 9,760.20 | 1.93 | 800.08 |
+
+All 9,432,913 sent queries succeeded; 167,087 planned slots were not sent.
+No observed timeout, send failure, unmatched UDP reply or IP limiter
+increment; recovery succeeded. All observed DNS reliability and latency
+criteria passed, but the second phase sent only 97.61% of the planned count,
+under the unchanged 99% gate. In dev16.1 terminology the first phase passes;
+the second is INCONCLUSIVE, not proof of resolver failure or of 10,000 q/s
+capacity. Do not waive the gate. The generator and host scheduling causes
+cannot be separated retrospectively from this report.
+
+| Target | Samples per role | Maximum gap | Late memory median change (resolver) |
+|---|---:|---:|---:|
+| 1,000 q/s | 120 | 31.112 s | +0.2 MiB |
+| 10,000 q/s | 20 | 30.095 s | +0.5 MiB |
+
+Both coverage gates complete; zero sampler diagnostics and clock anomalies;
+observed container health normal. The plateau is encouraging, not proof of
+absence of leaks; the 24-hour test remains open. Isolated phases in dev16.1
+start a new lab, not a continuation of the earlier warmed 70-minute run.

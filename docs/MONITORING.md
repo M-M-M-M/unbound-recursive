@@ -336,3 +336,21 @@ this is not evidence that email/webhook delivery, No Data/Error transitions,
 physical disk reclamation or daily storage growth have been verified. Use the
 dev15 manual checklist for those gates. A retained test bucket is removed
 with the temporary lab on cleanup, not through a production command.
+
+## dev16.1: separate retention qualification
+
+```sh
+make test-monitoring-retention
+```
+
+Runs the ordinary monitoring checks plus the isolated retention fixture,
+without provisioning or waiting for the freshness alert. The combined
+`make test-monitoring-operations` remains available. Failed alert polling
+now reports the last observed rule state, health, evaluation timestamp and
+error (or API failure); cleanup errors include the bounded diagnostic rather
+than only the temporary project name. Disposable credentials are redacted.
+The operator's corrected dev16 passed all 72 combined assertions, including
+actual alert firing/recovery and logical shard expiry, with successful
+cleanup. The before/after storage snapshots (416/428 KiB for the data
+directory) are not a daily-growth measurement. Notification delivery,
+No Data/Error behavior and physical storage reclamation remain open.

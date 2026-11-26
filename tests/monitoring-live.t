@@ -16,7 +16,11 @@ use BenchmarkMetrics qw(report_lines);
 use lib "$FindBin::Bin/../lib";
 use LocalDocker qw(require_local_docker);
 plan skip_all => 'opt in with make test-monitoring' unless ($ENV{RUN_MONITORING_LIVE}//'') eq '1';
-my $operations=($ENV{RUN_MONITORING_OPERATIONS}//'') eq '1';
+my $mode=$ENV{RUN_MONITORING_OPERATIONS}//'';
+$mode =~ /\A(?:|0|1|retention)\z/ or BAIL_OUT('invalid operations mode');
+my $alerts=$mode eq '1';
+my $retention=$alerts || $mode eq 'retention';
+my $operations=$alerts || $retention;
 require_local_docker() if $operations;
 $< != 0 or BAIL_OUT('run lab as non-root Docker operator');
 my $source=abs_path("$FindBin::Bin/..");
@@ -81,10 +85,12 @@ my $success=eval {
         copy("$source/monitoring/lab/$file","$dir/$file") or die "copy $file: $!";
         chmod 0644,"$dir/$file" or die $!;
     }
-    if ($operations) {
+    if ($alerts) {
         make_path("$dir/provisioning/alerting",{mode=>0755});
         copy("$source/monitoring/lab/provisioning/alerts-freshness.json","$dir/provisioning/alerting/freshness.json") or die $!;
         chmod 0644,"$dir/provisioning/alerting/freshness.json" or die $!;
+    }
+    if ($retention) {
         # Accelerate retention only in this throwaway Compose project.
         my $compose=read_bytes("$dir/compose.yaml");
         $compose =~ s/(      DOCKER_INFLUXDB_INIT_MODE: setup\n)/$1      INFLUXD_STORAGE_RETENTION_CHECK_INTERVAL: 5s\n/ or die "retention test override missing\n";
@@ -184,15 +190,22 @@ my $success=eval {
     is(latest_ns(),$third,'stopped resolver does not generate fresh source timestamps');
     my $stale=query($filter.' |> last() |> map(fn: (r) => ({_value: float(v: int(v: now()) - int(v: r._time)) / 1000000000.0}))');
     ok(defined($stale)&&$stale>=8,'freshness age increases after resolver stop');
-    if ($operations) {
+    if ($alerts) {
+        my $last_rule='not polled';
         my $rule_state=sub {
-            my $r=command([@curl,"$url/api/prometheus/grafana/api/v1/rules"],20);
-            return undef if $r->{code};
+            my $r=eval {command([@curl,"$url/api/prometheus/grafana/api/v1/rules"],20)};
+            if (!$r) {$last_rule='rules API command failed or timed out'; return undef;}
+            if ($r->{code}) {$last_rule="rules API exit $r->{code}"; return undef;}
             my $data=eval {decode_json($r->{stdout})};
-            return undef unless ref($data) eq 'HASH';
+            if (ref($data) ne 'HASH') {$last_rule='invalid rules API JSON'; return undef;}
+            $last_rule='freshness rule not found';
             for my $group (@{$data->{data}{groups}//[]}) {
                 for my $rule (@{$group->{rules}//[]}) {
-                    next unless ($rule->{name}//'') eq 'Resolver lab source metrics stale';
+                    next unless ($rule->{uid}//'') eq 'resolver-lab-freshness';
+                    my $last_error=$rule->{lastError}//'';
+                    # No credentials or raw response payloads in TAP output.
+                    for my $secret ($ENV{LAB_TOKEN},$ENV{LAB_PASSWORD}) {$last_error =~ s/\Q$secret\E/[redacted]/g if length($secret// '');}
+                    $last_rule=join(' ',map {"$_=".($rule->{$_}//'<missing>')} qw(state health lastEvaluation)).' lastError='.substr($last_error,0,500);
                     # Reject datasource error disguised as a firing freshness alert.
                     return undef if ($rule->{health}//'') ne 'ok';
                     return $rule->{state};
@@ -203,11 +216,13 @@ my $success=eval {
         my $provisioned_rule=poll(sub {my $r=command([@curl,"$url/api/v1/provisioning/alert-rules/resolver-lab-freshness"],20);$r->{code}?undef:$r->{stdout}},60);
         ok(defined($provisioned_rule),'freshness alert provisioned') or die "alert provisioning missing\n";
         # The resolver is stopped from the previous test. Wait for actual stale state.
-        ok(defined poll(sub {($rule_state->()//'') eq 'firing'?1:undef},250),'stale source raises firing state without query error') or die "freshness alert did not fire\n";
+        ok(defined poll(sub {($rule_state->()//'') eq 'firing'?1:undef},250),'stale source raises firing state without query error') or die "freshness alert did not fire: $last_rule\n";
         require_cmd([@compose,'up','-d','--wait','--wait-timeout','90','unbound'],'restart resolver for alert recovery');
         my $recovered=collect();
         ok(defined poll(sub {my $v=latest_ns();defined($v)&&$v eq $recovered?$v:undef},60),'recovery snapshot received');
-        ok(defined poll(sub {my $state=$rule_state->()//''; $state =~ /\A(?:normal|inactive)\z/?1:undef},90),'alert recovers with a fresh source');
+        ok(defined poll(sub {my $state=$rule_state->()//''; $state =~ /\A(?:normal|inactive)\z/?1:undef},90),'alert recovers with a fresh source') or diag($last_rule);
+    }
+    if ($retention) {
         my $du_before=require_cmd([@compose,'exec','-T','influxdb','du','-sk','/var/lib/influxdb2','/etc/influxdb2'],'storage size before retention test');
         my $bucket='retention-fixture';
         my $created=require_cmd([@compose,'exec','-T','influxdb','influx','bucket','create','--org','lab','--name',$bucket,'--retention','24h','--shard-group-duration','1h','--json'],'create isolated retention bucket');
@@ -242,8 +257,14 @@ my $success=eval {
 my $error=$@;
 if ($started) {
     my $r=eval {command([@compose,'down','--volumes','--remove-orphans'],180)};
+    my $cleanup_error=$@;
     ok($r && $r->{code}==0,'remove only disposable lab containers, networks and volumes');
-    if (!$r || $r->{code}) { diag("Lab cleanup failed; review project $project using $dir/compose.yaml"); $started=2; }
+    if (!$r || $r->{code}) {
+        my $detail=$r?"exit $r->{code}: $r->{stderr}":$cleanup_error;
+        for my $secret ($ENV{LAB_TOKEN},$ENV{LAB_PASSWORD}) {$detail =~ s/\Q$secret\E/[redacted]/g if length($secret// '');}
+        diag(substr($detail,0,2000));
+        diag("Lab cleanup failed; review project $project using $dir/compose.yaml"); $started=2;
+    }
 }
 chdir $cwd or die "restore cwd: $!";
 remove_tree($dir) unless $started==2;

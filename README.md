@@ -4,7 +4,7 @@ A self-hosted recursive DNS resolver based on Unbound and Debian slim. No public
 recursive forwarder is used. The default deployment is private, not a public
 DNS service. DNSSEC authenticates signed DNS data; it does not encrypt recursion.
 
-**Status: 0.1.0-dev16 — resource coverage and operational qualification, not production-qualified.**
+**Status: 0.1.0-dev16.1 — command runner and endurance diagnostics, not production-qualified.**
 Dev6 passed macOS M1 recovery tests; dev7 CI passed functional tests but was
 blocked by four CRITICAL findings. Dev8 replaces the in-container BIND DNS
 client with LDNS drill, retaining Debian upgrades, the CVE policy and empty
@@ -166,7 +166,9 @@ JSON/CSV/Markdown reports. `make benchmark-production`, `make benchmark-ratelimi
 and `make benchmark-stress` select separate load profiles.
 `make benchmark-soak-check` qualifies resource sampling in a two-minute run.
 `make benchmark-soak` and `make benchmark-soak-day` are manual long-run
-qualification commands. Production settings are never changed. Use `make benchmark-monitoring REPORT=benchmark-results/run-XXXXXXXX/report.json`
+qualification commands. Use `make benchmark-soak-1000` or
+`make benchmark-soak-10000` for independent phases; PASS, INCONCLUSIVE and
+FAIL are reported explicitly without relaxing the acceptance gates. Production settings are never changed. Use `make benchmark-monitoring REPORT=benchmark-results/run-XXXXXXXX/report.json`
 after `make monitoring-start` to import completed measurements into the disposable lab. See [performance](docs/PERFORMANCE.md).
 The development-only Perl client runs inside the internal Docker bridge; no
 benchmark ports are published. The client image is built locally and never
@@ -174,5 +176,6 @@ published. No benchmark queries are sent to public DNS servers. The results do n
 Internet recursion, and do not authorize production deployment.
 
 Use `make test-monitoring-operations` for the opt-in freshness alert and
-retention fixture test; `make monitoring-alerts` installs a lab-only rule.
+retention fixture test; `make test-monitoring-retention` skips the alert test.
+`make monitoring-alerts` installs a lab-only rule.
 See [release candidate checklist](docs/RELEASE-CHECKLIST.md) for open gates.

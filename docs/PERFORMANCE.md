@@ -211,3 +211,44 @@ Screen sleep is fine; system sleep is not. On Linux use an uninterrupted
 local Docker host. Clock gaps indicate an invalid timing/coverage condition,
 not definitive proof of system sleep. The dev15 partial sampling anomaly is
 recorded in [measured evidence](PERFORMANCE-EVIDENCE.md).
+
+## dev16.1: independent phases and explicit qualification outcomes
+
+```sh
+make benchmark-soak-1000     # 1,000 q/s for 60 min, separate fresh lab
+make benchmark-soak-10000    # 10,000 q/s for 10 min, separate fresh lab
+```
+
+The existing combined `make benchmark-soak`, `benchmark-soak-check` and
+`benchmark-soak-day` remain available. The split profiles have identical
+phase definitions and isolated safety limits; each creates a fresh lab, so
+cache/resource history differs from the second phase of the combined run.
+The split profiles are also accepted by benchmark import in Grafana.
+
+Endurance retains the 99% emission, 99.99% valid/sent, zero send errors,
+p99 <5 ms, limiter, resource coverage, runtime and recovery gates. The
+smoke profile still does not enforce the throughput or p99 thresholds.
+The schema-3 JSON now carries `qualification` (overall string; per completed
+phase an object with `status` and `reasons`), also shown in terminal and
+CSV/Markdown. A clean but under-driven run is INCONCLUSIVE (script exit 2);
+a failed DNS, latency, resource, container or recovery gate is FAIL (script
+exit 1). A failure takes precedence over insufficient offered load. PASS
+exits 0. Both nonzero statuses make the Make target fail; GNU make's own
+exit code is generally 2 for either. Do not infer the result from make's
+exit code alone: use the report and terminal text. Aborted phases retain
+completed phases and resource evidence; an orchestration failure may not
+have a full report. Cleanup errors also remain failures independently of
+phase qualification. A PASS applies only to the measured lab workload.
+
+Async UDP adds `emission_diagnostics` to phase JSON (including phases of
+quick and ratelimit): `expired_slots` (skipped older slots before dispatch),
+`pending_limit` (in-flight cap), `id_collision` (transaction still pending),
+`tail_slots` (unprocessed slots at deadline), `dispatch_count`, dispatch
+mean/max delay and max wakeup delay, all delays in milliseconds. Skip counts
+sum exactly to `not_attempted`; send errors are outcomes of attempts, not
+skips. Dispatch delay is measured at the send call preparation point, not
+kernel wire time. Wakeup delay measures how far the current schedule is
+behind before skipping; it is not proof of OS scheduling latency alone.
+The generator still skips rather than catches up in bursts. Additional
+hot-loop accounting can itself change measured throughput; compare results
+on controlled hosts and do not infer a root cause from a single run.
