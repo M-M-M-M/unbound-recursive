@@ -1,11 +1,12 @@
 #!/usr/bin/env perl
-# Disposable bounded load experiment; only loopback and synthetic fixture names.
+# Disposable bounded load experiment; internal bridge only and synthetic fixture names.
 use v5.26;
 use strict;
 use warnings;
 use FindBin qw($RealBin);
 use lib $RealBin, "$RealBin/../tests/lib";
-use DNSBench qw(query summarize now);
+use DNSBench qw(now);
+use LabNetwork qw(validate_lab_network);
 use lib "$RealBin/../lib";
 use LocalDocker qw(require_local_docker);
 use ProjectTest qw(run_command read_bytes write_bytes);
@@ -24,21 +25,34 @@ my $dir=tempdir('unbound-bench-XXXXXXXX',TMPDIR=>1,CLEANUP=>0);
 my ($project)=$dir=~m{([^/]+)\z}; $project=lc $project;
 my @compose=('docker','compose','--env-file','/dev/null','-p',$project,'-f',"$dir/compose.yaml");
 local @ENV{qw(COMPOSE_PROJECT_NAME COMPOSE_DISABLE_ENV_FILE COMPOSE_ENV_FILES COMPOSE_PROFILES)}=($project,1,'','');
-my %children;
+my $client_image="$project-client:local";
+local $ENV{BENCH_CLIENT_IMAGE}=$client_image;
+my $sampler;
+my $built=0;
 my $started=0;
 my $report;
 sub cmd {
     my ($argv,$limit)=@_;
     my $r=run_command($argv,'',$limit//60);
-    die "command failed: @$argv\n$r->{stderr}\n" if $r->{code};
+    die "command failed: @$argv\n$r->{stdout}\n$r->{stderr}\n" if $r->{code};
     return $r->{stdout};
 }
 sub compose { cmd([@compose,@_],120); }
-sub port {
-    my ($proto)=@_;
-    my $binding=compose('port','--protocol',$proto,'unbound','5353');
-    $binding=~/\A127\.0\.0\.1:(\d+)\s*\z/ or die "unsafe benchmark binding\n";
-    return $1;
+sub inspect_object {
+    my ($type,$id)=@_;
+    my $objects=decode_json(cmd(['docker',$type,'inspect',$id]));
+    ref($objects) eq 'ARRAY' && @$objects==1 or die "invalid Docker inspection for $id\n";
+    return $objects->[0];
+}
+sub container_id {
+    my ($service)=@_;
+    my $id=compose('ps','-q',$service); chomp $id;
+    $id =~ /\A[0-9a-f]{64}\z/ or die "invalid lab container for $service\n";
+    return $id;
+}
+sub client {
+    my (@args)=@_;
+    return cmd([@compose,'exec','-T','client','perl','/bench/client.pl',@args],45);
 }
 sub counters {
     my $stats=compose('exec','-T','unbound','unbound-control','-c','/etc/unbound/recursive.conf','stats_noreset');
@@ -48,50 +62,63 @@ sub counters {
     return \%v;
 }
 sub probe {
-    my ($port,$proto,$name)=@_;
-    my $end=now()+15;
-    while (now()<$end) { my ($result)=query($port,$proto,$name,1); return 1 if $result eq 'ok'; sleep 0.5; }
-    die "fixture/recovery probe failed for $proto\n";
+    my ($address,$proto,$name)=@_;
+    client('probe',$address,$proto,$name) =~ /\Aok\s*\z/ or die "invalid fixture probe response\n";
+}
+sub stop_sampler {
+    return unless defined $sampler;
+    kill 'TERM',$sampler; waitpid($sampler,0); undef $sampler;
+}
+sub start_sampler {
+    my ($file,$start,$ids)=@_;
+    pipe(my $ready_r,my $ready_w) or die "sampler readiness pipe: $!\n";
+    $sampler=fork(); defined $sampler or die "fork sampler: $!\n";
+    if (!$sampler) {
+        local $SIG{INT}='DEFAULT';
+        # Finish the current bounded Docker stats call before leaving; avoid
+        # killing its subprocess midway through an output sample.
+        my $stop=0; local $SIG{TERM}=sub {$stop=1};
+        close $ready_r; print {$ready_w} '1' or _exit(1); close $ready_w or _exit(1);
+        while (!$stop) {
+            my $raw=eval {cmd(['docker','stats','--no-stream','--format','{{json .}}',@$ids{qw(resolver client)}],8)};
+            if (defined $raw) {
+                my @samples;
+                for my $line (split /\n/,$raw) {
+                    my $s=eval {decode_json($line)}; next unless ref($s) eq 'HASH';
+                    my $short=$s->{ID}//$s->{Container}//'';
+                    next unless $short =~ /\A[0-9a-f]{12,64}\z/;
+                    my ($role)=grep {index($ids->{$_},$short)==0} qw(resolver client);
+                    next unless defined $role;
+                    delete @$s{qw(Name ID Container)};
+                    push @samples,{elapsed=>now()-$start,role=>$role,%$s};
+                }
+                if (@samples) {
+                    open my $fh,'>>:raw',$file or _exit(1);
+                    print {$fh} encode_json($_),"\n" for @samples;
+                    close $fh or _exit(1);
+                }
+            }
+            for (1..20) {last if $stop; sleep 0.1;}
+        }
+        _exit(0);
+    }
+    close $ready_w;
+    my $ready=<$ready_r>; close $ready_r;
+    defined $ready && $ready eq '1' or die "sampler failed to start\n";
 }
 sub phase {
-    my ($id,$port,$proto,$kind,$count,$workers,$container)=@_;
-    sleep 1.1; # separate phases across limiter windows
+    my ($id,$address,$proto,$kind,$count,$workers,$ids)=@_;
+    sleep 1.1;
     my $before=counters();
-    my $start=now(); my $deadline=$start+30;
-    my @files;
-    for my $w (0..$workers-1) {
-        my $file="$dir/$id-$w.json"; push @files,$file;
-        my $pid=fork(); defined $pid or die "fork: $!\n";
-        if (!$pid) {
-            local $SIG{INT}='DEFAULT'; local $SIG{TERM}='DEFAULT'; srand();
-            my @rows;
-            for (my $i=$w;$i<$count && now()<$deadline;$i+=$workers) {
-                my $name=$kind eq 'warm'?'warm.bench.test.':"$id-$i.bench.test.";
-                push @rows,[query($port,$proto,$name,1)];
-            }
-            write_bytes($file,encode_json({rows=>\@rows, end=>now()})); _exit(0);
-        }
-        $children{$pid}=1;
-    }
-    my @samples; my $last=0;
-    while (%children) {
-        for my $pid (keys %children) {
-            my $done=waitpid($pid,WNOHANG);
-            if ($done==$pid) { delete $children{$pid}; $?==0 or die "benchmark worker failed\n"; }
-            elsif ($done<0) { delete $children{$pid}; die "waitpid failed\n"; }
-        }
-        last unless %children;
-        if (!$quick && now()-$last>=2) {
-            $last=now();
-            my $raw=eval { cmd(['docker','stats','--no-stream','--format','{{json .}}',$container],8) };
-            if (defined $raw) { my $s=eval { decode_json($raw) }; if ($s) { delete @$s{qw(Name ID Container)}; push @samples,{elapsed=>now()-$start,%$s}; } }
-        }
-        sleep 0.02;
-    }
-    my $end=$start;
-    my @rows; for my $file (@files) { my $data=decode_json(read_bytes($file)); push @rows,@{$data->{rows}}; $end=$data->{end} if $data->{end}>$end; }
-    my $seconds=$end-$start;
-    my $result=summarize(\@rows,$seconds,$count);
+    my $file="$dir/$id-stats.jsonl";
+    start_sampler($file,now(),$ids) unless $quick;
+    my $result=decode_json(client('phase',$address,$id,$proto,$kind,$count,$workers));
+    stop_sampler();
+    ref($result) eq 'HASH' && ($result->{requested}//0)==$count &&
+        defined($result->{attempted}) && defined($result->{successes}) &&
+        $result->{successes} <= $result->{attempted} && $result->{attempted} <= $count
+        or die "invalid client phase result\n";
+    my @samples=-f $file?map {decode_json($_)} split(/\n/,read_bytes($file)):();
     my $after=counters();
     $result->{cache_delta}={map {$_=>$after->{$_}-$before->{$_}} grep {exists $before->{$_}} keys %$after};
     @$result{qw(case protocol cache workers resource_samples)}=($id,$proto,$kind,$workers,\@samples);
@@ -100,26 +127,31 @@ sub phase {
 }
 my $ok=eval {
     local $SIG{INT}=sub {die "interrupted\n"}; local $SIG{TERM}=sub {die "terminated\n"};
-    for (qw(compose.yaml resolver.conf fixture.conf)) {copy("$RealBin/$_","$dir/$_") or die $!; chmod 0644,"$dir/$_" or die $!;}
+    for (qw(compose.yaml resolver.conf fixture.conf Dockerfile.client DNSBench.pm ClientWorkload.pm client.pl)) {copy("$RealBin/$_","$dir/$_") or die $!; chmod 0644,"$dir/$_" or die $!;}
     my $image=decode_json(cmd(['docker','image','inspect','unbound-recursive:dev']))->[0];
-    compose('config','--quiet'); $started=1;
+    compose('config','--quiet');
+    # Unique local tag; do not pull or publish the load generator at runtime.
+    $built=1;
+    cmd(['docker','build','--pull','--no-cache','--tag',$client_image,'--file',"$dir/Dockerfile.client",$dir],300);
+    my $client_meta=inspect_object('image',$client_image);
+    $started=1;
     compose('up','-d','--wait','--wait-timeout','90');
-    my $udp=port('udp'); my $tcp=port('tcp');
-    my $container=compose('ps','-q','unbound'); chomp $container;
-    $container=~/\A[0-9a-f]{12,64}\z/ or die "invalid lab container\n";
-    probe($udp,'udp','warm.bench.test.'); probe($tcp,'tcp','warm.bench.test.');
+    my %ids=map {$_=>container_id($_ eq 'resolver'?'unbound':$_)} qw(resolver client fixture);
+    my $network=inspect_object('network',"${project}_isolated");
+    my $address=validate_lab_network($network,map {inspect_object('container',$ids{$_})} qw(resolver client fixture));
+    probe($address,'udp','warm.bench.test.'); probe($address,'tcp','warm.bench.test.');
     my @phases;
     my $n=$quick?12:1000;
     for my $proto (qw(udp tcp)) {
         for my $kind (qw(warm cold)) {
-            push @phases,phase("$proto-$kind",$proto eq 'udp'?$udp:$tcp,$proto,$kind,$n,$quick?1:4,$container);
+            push @phases,phase("$proto-$kind",$address,$proto,$kind,$n,$quick?1:4,\%ids);
         }
     }
-    push @phases,phase('udp-concurrent',$udp,'udp','cold',4000,16,$container) unless $quick;
+    push @phases,phase('udp-concurrent',$address,'udp','cold',4000,16,\%ids) unless $quick;
     sleep 2;
-    probe($udp,'udp','recovery.bench.test.'); probe($tcp,'tcp','recovery.bench.test.');
+    probe($address,'udp','recovery.bench.test.'); probe($address,'tcp','recovery.bench.test.');
     my @os=uname();
-    $report={schema=>1,utc=>strftime('%Y-%m-%dT%H:%M:%SZ',gmtime),os=>$os[0],architecture=>$os[4],image_id=>$image->{Id},image_bytes=>$image->{Size},image_architecture=>$image->{Architecture},docker_version=>cmd(['docker','version','--format','{{.Server.Version}}']),profile=>$quick?'quick':'bounded',recovery=>JSON::PP::true,phases=>\@phases};
+    $report={schema=>2,client_image_id=>$client_meta->{Id},client_image_bytes=>$client_meta->{Size},client_image_architecture=>$client_meta->{Architecture},network=>'internal bridge; no published ports',utc=>strftime('%Y-%m-%dT%H:%M:%SZ',gmtime),os=>$os[0],architecture=>$os[4],image_id=>$image->{Id},image_bytes=>$image->{Size},image_architecture=>$image->{Architecture},docker_version=>cmd(['docker','version','--format','{{.Server.Version}}']),profile=>$quick?'quick':'bounded',recovery=>JSON::PP::true,phases=>\@phases};
     my $out="$root/benchmark-results"; -l $out and die "unsafe reports directory\n"; make_path($out,{mode=>0700});
     my $dest=tempdir('run-XXXXXXXX',DIR=>$out,CLEANUP=>0);
     write_bytes("$dest/report.json",JSON::PP->new->canonical->pretty->encode($report));
@@ -131,7 +163,7 @@ my $ok=eval {
         $csv.=join(',',@$p{qw(case protocol cache workers requested attempted successes seconds successful_qps)},map {$lat->{$_}//''} qw(min mean median p95 p99 max))."\n";
         $md.=sprintf("| %s | %d / %d | %.1f | %s | %s |\n",@$p{qw(case successes requested successful_qps)},map {defined($_)?sprintf('%.3f',$_):'n/a'} @$lat{qw(p95 p99)});
     }
-    $md.="\nLoopback forwarding fixture only; not Internet recursion capacity. TCP includes new connections. Resources are sampled, not peaks.\n";
+    $md.="\nContainer-to-container internal bridge; loopback forwarding fixture only, not Internet recursion capacity. TCP includes new connections. Resolver and client resources are sampled separately, not peaks.\n";
     write_bytes("$dest/report.csv",$csv); write_bytes("$dest/report.md",$md);
     print "Reports: $dest\n";
     if ($quick) {
@@ -141,7 +173,8 @@ my $ok=eval {
     1;
 };
 my $error=$@;
-for my $pid (keys %children) {kill 'TERM',$pid; waitpid($pid,0);}
+stop_sampler();
 if ($started) { eval {compose('down','--volumes','--remove-orphans')}; if ($@) {warn "cleanup failed; lab retained at $dir: $@"; exit 1;} }
+if ($built) { eval {cmd(['docker','image','rm',$client_image],30)}; warn "client image cleanup failed: $@" if $@; }
 remove_tree($dir,{safe=>1});
 die $error unless $ok;

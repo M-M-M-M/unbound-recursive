@@ -16,7 +16,7 @@ Once action is done, remove the priority number.
 - [ ] Probe IPv4/IPv6 exposure and unauthorized isolated lab clients; check source-IP NAT behavior. 6️⃣
 - [ ] Audit installed package inventory and qualify signed deployment on isolated production-like host; dev12 manual CI workflow reported passed. 7️⃣
 - [ ] Qualify real alert delivery, per-host absence, retention and deployment-specific permissions; dev13 CI and M1 dashboard reported successful. 8️⃣
-- [ ] Run dev14 isolated benchmark and ACL tests on M1 and native CI; add deterministic DNSSEC-negative fixture and prolonged resource/load tests. 9️⃣
+- [ ] Qualify corrected dev14.1 internal benchmark on M1 and native CI; retain full reports. Dev14 M1 ACL audit passed; add deterministic DNSSEC-negative fixture and prolonged resource/load tests. 9️⃣
 - [ ] Record all acceptance evidence and approve release before any production deployment. 🔟
 
 ## Later milestones
@@ -60,3 +60,6 @@ Once action is done, remove the priority number.
 - [x] Dev13: implement manifest discovery, collection helper, dashboard extension and opt-in monitoring lab/CI; live results pending.
 - [x] Dev13: operator reports all workflows successful, manual re-scan successful and visible Grafana graphs on macOS ARM64; latest logs not supplied.
 - [x] Dev14: implement interactive monitoring lifecycle, usage snapshot, bounded synthetic forwarding benchmark, ACL/process audit and historical CVE inventory; live Docker tests and individual CVE review pending.
+
+- [x] Dev14 M1: 225 unit, 1 integration, 18 volume, 22 bind, 48 monitoring, 25 network assertions passed; benchmark failed before load (`unsafe benchmark binding`).
+- [x] Dev14.1: replace benchmark host-port access with an internal non-root client and verify actual network isolation; live qualification pending.

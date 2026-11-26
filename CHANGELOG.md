@@ -7,6 +7,19 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 
 ## [Unreleased]
 
+### Fixed (dev14.1)
+
+- Replace host loopback port publication with a dedicated non-root Perl client
+  on the internal benchmark bridge. No ports are published; check the actual
+  network membership, endpoints, namespace and bindings before sending traffic.
+- Keep the load generator in a local-only, separately built pinned Debian
+  image. Collect worker timings in the client, and label resource samples
+  for the resolver and client separately in report schema 2.
+- Add network-guard regressions and real multi-worker loopback socket tests.
+  Record dev14 macOS evidence: 339 assertions passed, benchmark initialization
+  failed with `unsafe benchmark binding`; new Docker qualification pending.
+- No production image, resolver configuration, CVE policy or storage change.
+
 ### Added (dev14)
 
 - Add interactive, isolated Grafana lab lifecycle and InfluxDB disk usage command.

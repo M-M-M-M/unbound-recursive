@@ -2,6 +2,7 @@
 services:
   unbound:
     image: unbound-recursive:dev
+    pull_policy: never
     user: '10001:10001'
     read_only: true
     cap_drop: [ALL]
@@ -12,7 +13,6 @@ services:
     volumes:
       - state:/state
       - ./resolver.conf:/etc/unbound/recursive.conf:ro
-    ports: ['127.0.0.1::5353/udp', '127.0.0.1::5353/tcp']
     networks: [isolated]
     mem_limit: 512m
     cpus: 1.0
@@ -20,6 +20,7 @@ services:
     logging: {driver: local, options: {max-size: '10m', max-file: '5'}}
   fixture:
     image: unbound-recursive:dev
+    pull_policy: never
     entrypoint: ['/usr/sbin/unbound', '-d', '-c', '/etc/unbound/fixture.conf']
     user: '10001:10001'
     read_only: true
@@ -31,6 +32,20 @@ services:
     mem_limit: 128m
     cpus: 0.5
     pids_limit: 32
+    logging: {driver: local, options: {max-size: '10m', max-file: '2'}}
+  client:
+    image: ${BENCH_CLIENT_IMAGE:?private benchmark image required}
+    pull_policy: never
+    user: '10001:10001'
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    tmpfs:
+      - /tmp:uid=10001,gid=10001,mode=0700,size=32m
+    networks: [isolated]
+    mem_limit: 256m
+    cpus: 2.0
+    pids_limit: 64
     logging: {driver: local, options: {max-size: '10m', max-file: '2'}}
 networks:
   isolated: {internal: true, enable_ipv6: false}

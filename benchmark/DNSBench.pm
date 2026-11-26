@@ -5,6 +5,7 @@ use warnings;
 use Exporter 'import';
 use IO::Socket::INET;
 use IO::Select;
+use Socket qw(AF_INET inet_pton);
 use Time::HiRes qw(clock_gettime CLOCK_MONOTONIC);
 our @EXPORT_OK = qw(packet valid_reply query summarize now);
 sub now { clock_gettime(CLOCK_MONOTONIC) }
@@ -43,11 +44,13 @@ sub read_exact {
     return $out;
 }
 sub query {
-    my ($port,$protocol,$name,$timeout)=@_;
+    my ($port,$protocol,$name,$timeout,$address)=@_;
+    $address //= '127.0.0.1';
+    $address =~ /\A[0-9.]+\z/ && inet_pton(AF_INET,$address) or die "invalid numeric IPv4 endpoint\n";
     $port =~ /\A\d+\z/ && $port>0 && $port<=65535 && $protocol =~ /\A(?:udp|tcp)\z/ or die "invalid endpoint\n";
     my $request=packet(int(rand(65536)),$name);
     my $start=now();
-    my $socket=IO::Socket::INET->new(PeerAddr=>'127.0.0.1',PeerPort=>$port,Proto=>$protocol,Timeout=>$timeout);
+    my $socket=IO::Socket::INET->new(PeerAddr=>$address,PeerPort=>$port,Proto=>$protocol,Timeout=>$timeout);
     return ('connect_error',1000*(now()-$start)) unless $socket;
     local $SIG{PIPE}='IGNORE';
     my $deadline=$start+$timeout;

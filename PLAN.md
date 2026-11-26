@@ -43,7 +43,9 @@ and [TODO](TODO.md) for acceptance and prioritized work.
 - dev13: operator reports monitoring CI, manual re-scan and macOS Grafana
   visualization successful; retain reports and verify scheduled execution.
 - dev14: interactive lab, bounded synthetic load and resource reporting,
-  native ACL smoke tests; qualify live and review current HIGH CVEs.
+  native ACL smoke tests; M1 tests passed except benchmark initialization.
+- dev14.1: remove host port publication, use a separate internal client,
+  qualify the revised load path on macOS and native CI; review current HIGH CVEs.
   DNSSEC-negative fixture, prolonged soak, Grafana benchmark correlation and
   production-like host audit remain open.
 - dev15: production-like deployment, state migration and release-gate review.

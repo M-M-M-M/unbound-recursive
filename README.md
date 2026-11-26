@@ -4,7 +4,7 @@ A self-hosted recursive DNS resolver based on Unbound and Debian slim. No public
 recursive forwarder is used. The default deployment is private, not a public
 DNS service. DNSSEC authenticates signed DNS data; it does not encrypt recursion.
 
-**Status: 0.1.0-dev14 — interactive monitoring lab, bounded synthetic DNS benchmark and network audit, not production-qualified.**
+**Status: 0.1.0-dev14.1 — interactive monitoring lab, bounded synthetic DNS benchmark and network audit, not production-qualified.**
 Dev6 passed macOS M1 recovery tests; dev7 CI passed functional tests but was
 blocked by four CRITICAL findings. Dev8 replaces the in-container BIND DNS
 client with LDNS drill, retaining Debian upgrades, the CVE policy and empty
@@ -163,5 +163,7 @@ Stop foreground traffic before `make monitoring-stop` (retains history) or
 `make test-network` and `make test-benchmark` use separate isolated labs;
 `make benchmark` is a bounded, opt-in UDP/TCP warm/cold and concurrent load
 experiment with local JSON/CSV/Markdown reports. See [performance](docs/PERFORMANCE.md).
-No benchmark queries are sent to public DNS servers. The results do not measure
+The development-only Perl client runs inside the internal Docker bridge; no
+benchmark ports are published. The client image is built locally and never
+published. No benchmark queries are sent to public DNS servers. The results do not measure
 Internet recursion, and do not authorize production deployment.

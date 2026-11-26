@@ -276,3 +276,27 @@ host and retain the AMD64 CI run. The lab checks source timestamps, duplicate
 point handling, real statistics, read-only handoff, Flux dashboard queries,
 restart/reset and freshness after stopping the resolver. Actual alert delivery,
 retention expiry and real storage footprint remain separate acceptance tests.
+
+## dev14 and dev14.1 performance qualification
+
+The supplied macOS ARM64 dev14 log shows 225 offline assertions, one
+functional integration assertion, 18 named-volume recovery, 22 bind recovery,
+48 monitoring and 25 network assertions passed (339 total). The new network
+audit verified UDP/TCP ACL refusal, no published ports and effective non-root,
+capabilities, no-new-privileges and seccomp checks. `make test-benchmark`
+failed before load with `unsafe benchmark binding`. The operator reported
+Docker Desktop 4.99.0 / Engine 29.9.3 and pushed dev14 as commit `d8e9101`.
+The exact port response was not recorded; the fix eliminates the dependency
+on host publishing on an internal bridge.
+
+Dev14.1 introduces a separate local-only load generator. The targeted suite
+checks actual network-inspection data using simulated Docker objects and
+exercises the moved multi-worker workload over real loopback sockets. Run
+`make test-benchmark`, inspect both native performance CI jobs and retain
+`make benchmark` JSON/CSV/Markdown reports before performance acceptance.
+Docker is unavailable in the preparation runtime; no corrected live lab has
+been executed here. The existing production image/configuration are unchanged.
+
+Preparation: 249 unit assertions passed under Linux, including 24 new
+benchmark-lab assertions. The Perl entry points compile; Docker and live
+Compose qualification remain pending.
