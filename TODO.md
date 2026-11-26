@@ -9,13 +9,13 @@ Once action is done, remove the priority number.
 
 - [ ] Review all remaining HIGH CVEs and reachable code; LDNS CVE-2026-10846 initial triage recorded; no exceptions. 0️⃣
 - [ ] Review full host hardening reference, pinned Actions and transitive installers; qualify pinned base refresh and dev10 build. 1️⃣
-- [ ] Qualify dev10 anonymous consumer gate, provenance and both platform SBOM verifications; run revised scheduled/manual re-scan. 2️⃣
-- [ ] Qualify dev12 on macOS M1, both CI architectures and Linux amd64 production-like host. 3️⃣
+- [ ] Run revised scheduled/manual re-scan and retain both platform reports; anonymous consumer verification reported successful in dev12. 2️⃣
+- [ ] Retain dev12 operator qualification evidence and qualify on Linux amd64 production-like host. 3️⃣
 - [ ] Verify non-root effective privileges, protected deployment paths, SELinux, resource limits, firewall and Docker routes. 4️⃣
-- [ ] Verify both state backends: native bind and volume recovery (including confirmed purge and symlink refusal), Linux numeric ownership/SELinux, Docker Desktop UID mapping, trust anchor persistence/rollover, migration and restart. 5️⃣
+- [ ] Complete production-like Linux numeric ownership/SELinux, trust anchor rollover and migration; dev12 local volume/bind recovery and purge reported successful. 5️⃣
 - [ ] Probe IPv4/IPv6 exposure and unauthorized isolated lab clients; check source-IP NAT behavior. 6️⃣
-- [ ] Audit installed package inventory; run dev10 manual live deployment qualification on both native CI runners and isolated host, including failure recovery. 7️⃣
-- [ ] Qualify stats-only collection, Telegraf, InfluxDB and Grafana including stale data alerts. 8️⃣
+- [ ] Audit installed package inventory and qualify signed deployment on isolated production-like host; dev12 manual CI workflow reported passed. 7️⃣
+- [ ] Run dev13 monitoring lab on M1 and AMD64 CI; qualify real alert delivery, per-host absence, retention and deployment-specific permissions. 8️⃣
 - [ ] Add deterministic DNSSEC-negative fixture and bounded resource/load tests. 9️⃣
 - [ ] Record all acceptance evidence and approve release before any production deployment. 🔟
 
@@ -55,3 +55,6 @@ Once action is done, remove the priority number.
 - [x] Add optional dedicated bind-state source, preflight and mount mismatch guards, non-destructive bind purge, backup/restore support, and native CI bind lab (dev11; offline tests pass, live qualification pending).
 
 - [x] Align purge semantics across storage modes; bind deletes only the active anchor after confirmation, with offline tests and live recovery lab (dev12; live qualification pending).
+
+- [x] Dev12: operator reports successful signed deployment/rollback workflow using distinct dev8/dev12 indexes; full successful-run logs not supplied.
+- [x] Dev13: implement manifest discovery, collection helper, dashboard extension and opt-in monitoring lab/CI; live results pending.

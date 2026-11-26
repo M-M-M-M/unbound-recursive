@@ -4,7 +4,7 @@ A self-hosted recursive DNS resolver based on Unbound and Debian slim. No public
 recursive forwarder is used. The default deployment is private, not a public
 DNS service. DNSSEC authenticates signed DNS data; it does not encrypt recursion.
 
-**Status: 0.1.0-dev12 — consistent confirmed DNSSEC purge in both storage modes, not production-qualified.**
+**Status: 0.1.0-dev13 — stats-only monitoring qualification lab and clearer manifest discovery, not production-qualified.**
 Dev6 passed macOS M1 recovery tests; dev7 CI passed functional tests but was
 blocked by four CRITICAL findings. Dev8 replaces the in-container BIND DNS
 client with LDNS drill, retaining Debian upgrades, the CVE policy and empty
@@ -12,8 +12,7 @@ exception register. Dev8 CI passed on both architectures, signed GHCR publicatio
 and operator Cosign verification succeeded. Dev9 pins the tested Debian base,
 adds digest-only update/rollback and stats-file handoff. Dev10 removes the
 GitHub CLI requirement, gates promotion on anonymous Cosign verification and
-adds a manually dispatched live update/rollback qualification. Dev11 adds an optional dedicated host directory for persistent DNSSEC state. Dev12 makes confirmed purge destroy the active trust anchor in either storage mode. Live
-qualification and host review remain required. DoH,
+adds a manually dispatched live update/rollback qualification. Dev11 adds an optional dedicated host directory for persistent DNSSEC state. Dev12 makes confirmed purge destroy the active trust anchor in either storage mode. Dev12 operator-reported local and signed-deployment qualification passed. Dev13 adds a disposable monitoring lab, collection helper, extended dashboard and manifest discovery. Live monitoring qualification and host review remain required. DoH,
 DoT, authentication, per-client monitoring and automated blocking remain planned.
 Hardening is mandatory from 0.1.0; the outstanding supply-chain checks are
 release blockers, not deferred to a later version.
@@ -30,6 +29,8 @@ make build
 make start
 make test
 make stats
+# Optional disposable monitoring qualification (requires the local build):
+make test-monitoring
 # macOS / hosts with dig installed:
 dig @127.0.0.1 -p 1053 example.org A +dnssec
 make stop

@@ -64,7 +64,9 @@ sub verify_signature {
     $matched or fail('no verified Cosign v3 image signature for the requested digest');
     print STDERR "Verified image signature: $ref\n";
 }
-sub verify {
+# Discovery is not cryptographic verification. Reject platform manifests before
+# asking Cosign, so operator input errors are clear.
+sub manifest {
     my ($d) = @_;
     if ($d eq 'latest') {
         my $metadata = decode_json(capture('docker', 'buildx', 'imagetools', 'inspect', "$repo:latest", '--format', '{{json .Manifest}}'));
@@ -72,21 +74,27 @@ sub verify {
     }
     $d = digest($d);
     my $ref = "$repo\@$d";
-    # All later operations use the immutable index, never the mutable tag.
-    verify_signature($ref, $d);
-    attest($ref, 'https://slsa.dev/provenance/v1');
     my $idx = decode_json(capture('docker', 'buildx', 'imagetools', 'inspect', $ref, '--raw'));
-    ref($idx->{manifests}) eq 'ARRAY' && @{$idx->{manifests}} == 2 or fail('expected exactly two platform manifests');
+    ref($idx->{manifests}) eq 'ARRAY' && @{$idx->{manifests}} == 2
+        or fail('expected multiarchitecture index (linux/amd64 and linux/arm64), not a platform image digest; use make digest');
     my %platform;
     for my $m (@{$idx->{manifests}}) {
+        ref($m) eq 'HASH' or fail('invalid platform descriptor');
         my $p = $m->{platform};
         ref($p) eq 'HASH' && ($p->{os} // '') eq 'linux' && ($p->{architecture} // '') =~ /\A(?:amd64|arm64)\z/ or fail('unexpected platform');
         exists $platform{$p->{architecture}} and fail('duplicate architecture');
         $platform{$p->{architecture}} = digest($m->{digest});
     }
     $platform{amd64} ne $platform{arm64} or fail('duplicate platform digest');
-    for my $arch (sort keys %platform) {
-        attest("$repo\@$platform{$arch}", 'https://cyclonedx.org/bom');
+    return ($d, \%platform);
+}
+sub verify {
+    my ($d, $platform) = manifest($_[0]);
+    my $ref = "$repo\@$d";
+    verify_signature($ref, $d);
+    attest($ref, 'https://slsa.dev/provenance/v1');
+    for my $arch (sort keys %$platform) {
+        attest("$repo\@$platform->{$arch}", 'https://cyclonedx.org/bom');
     }
     print STDERR "Verified manifest and both platform SBOMs: $ref\n";
     return $d;
@@ -235,10 +243,13 @@ sub update {
     die $error unless $ok;
 }
 my ($action, $arg) = @ARGV;
-if (defined($action) && $action eq 'verify' && @ARGV == 2) {
+if (defined($action) && $action eq 'digest' && @ARGV == 2) {
+    my ($d) = manifest($arg);
+    print "$d\n";
+} elsif (defined($action) && $action eq 'verify' && @ARGV == 2) {
     print "$repo\@" . verify($arg) . "\n";
 } elsif (defined($action) && (($action eq 'update' && @ARGV == 2) || ($action eq 'rollback' && @ARGV == 1))) {
     update($action, $arg);
 } else {
-    fail('usage: deploy.pl verify latest|sha256:<digest> | update sha256:<approved digest> | rollback');
+    fail('usage: deploy.pl digest latest|sha256:<digest> | verify latest|sha256:<digest> | update sha256:<approved digest> | rollback');
 }

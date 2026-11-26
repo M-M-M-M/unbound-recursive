@@ -3,11 +3,11 @@ on:
   workflow_dispatch:
     inputs:
       previous:
-        description: Previously published and approved manifest digest (sha256:...)
+        description: Previous approved multiarchitecture index digest (make digest; sha256:...)
         required: true
         type: string
       candidate:
-        description: Different published and approved manifest digest (sha256:...)
+        description: Different approved multiarchitecture index digest (sha256:...)
         required: true
         type: string
 permissions:

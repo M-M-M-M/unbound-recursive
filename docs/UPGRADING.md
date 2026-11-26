@@ -143,3 +143,26 @@ file replacement is not a guarantee of durability after host/power failure.
 
 Mock tests are not evidence that live Cosign, Compose, rollback or
 host permissions work on the actual production hosts.
+
+## Discover the correct manifest digest (dev13)
+
+`make digest` prints only the current multiarchitecture index SHA-256. It is
+structural discovery, not authorization or signature verification:
+
+```sh
+make digest
+./scripts/deploy.pl verify latest
+```
+
+For a manual deployment qualification, open the successful Build and qualify
+run, Summary, and the **Deployment qualification inputs** section. Copy
+`Previous manifest digest` into `previous` and `Published manifest digest`
+into `candidate`. These must be distinct approved indexes, each containing
+both Linux amd64 and arm64. If the previous digest is unavailable or identical,
+select an earlier successful run's published index and verify it explicitly.
+Do not use the nested per-platform digests printed by imagetools inspect.
+A single-platform digest now fails before Cosign with an actionable error.
+
+Run **Re-scan published snapshot** manually with the approved index (or leave
+blank to resolve latest once) and retain both platform reports. A green scan
+is evidence for the policy at scan time, not automatic deployment approval.

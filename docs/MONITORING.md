@@ -144,3 +144,82 @@ completely missing host, a per-host series may disappear; configure an expected
 host inventory or independent per-host probe as well. Dev10's disposable
 signed-deployment lab exports actual stats during the update test. It does not
 install Telegraf or write to any operator InfluxDB instance.
+
+## dev13 disposable end-to-end lab
+
+After `make build`, run `make test-monitoring` from the project root as a
+non-root Docker operator with Compose v2 and curl. The lab uses fixed-version
+third-party image tags (InfluxDB 2.7.12, Telegraf 1.38.4, Grafana 12.4.16);
+these are test dependencies, not security-qualified production images or
+immutable digest pins. The test builds on the local resolver image, generates
+random disposable credentials, allocates a unique project, isolated networks
+and named volumes, and publishes only an ephemeral loopback Grafana port.
+No existing monitoring service, bucket, resolver port, volume or secrets are
+reused. The lab uses a temporary admin token for convenience; production
+must use separate bucket-scoped read/write tokens and protected secret files.
+The lab destroys its own containers/networks/volumes when done. It reports
+cleanup failure rather than removing unrelated resources. Pulls may require
+several hundred MB; use a disposable Docker environment. Do not run against
+an untrusted remote Docker context. Linux bind permissions/SELinux must be
+reviewed separately. The independent **Qualify stats-only monitoring** Actions
+workflow runs on AMD64 and can be launched manually.
+
+The test checks exact source timestamps, repeated reads merging into the same
+InfluxDB point, a new point after collection, positive query rate, read-only
+Telegraf, provisioning and Flux execution for all dashboard panels, a real
+resolver restart, and stale data after a failed collection. It does not certify
+browser rendering, notification delivery, long-term retention expiry, or
+production security of the lab images.
+
+## Integrate with an existing monitoring stack
+
+From the approved resolver deployment directory, as the authorized operator:
+
+```sh
+perl monitoring/collect-stats.pl /path/to/protected/metrics/unbound.lp
+```
+
+This helper locks each destination, rejects concurrent collection, checks
+Docker exit status and passes only complete output to the atomic exporter.
+Schedule it every 30 seconds using the existing approved scheduler; enforce a
+job timeout, capture nonzero exits, and keep its lock file in the protected
+metrics directory. Do not grant Docker access to Telegraf. Set the read-only
+file path in `monitoring/telegraf-file.conf`; the parser explicitly expects ns
+precision. Preserve the source timestamp. Configure a unique stable `host`
+tag per resolver; do not use arbitrary query names or client IPs as tags.
+Use a write-only bucket token for Telegraf and a separate read-only bucket
+token for Grafana. Import `grafana-snapshot-flux.json` and select the existing
+Flux datasource and bucket. See official configuration references:
+https://docs.influxdata.com/telegraf/v1/data_formats/input/influx/ and
+https://grafana.com/docs/grafana/latest/administration/provisioning/.
+
+### Proposed alert rules (configure explicitly, do not auto-install)
+
+| Signal | Initial rule | Caveat |
+| --- | --- | --- |
+| Availability | Independent DNS probe fails twice | A local health record is liveness only; also probe signed recursion from an authorized client |
+| Freshness | Latest source age > 120 s; evaluate every 30 s | Set No Data/Error alerting and per-expected-host missing-series handling |
+| SERVFAIL | Sustained nonzero rate above the observed normal baseline | DNSSEC rejection can be expected; review threshold before notifying |
+| Latency | Average recursion > 0.25 s for 5 min as starting point | Not a percentile, no recursion samples is not zero latency |
+| Cache | Sustained low hit ratio with sufficient query volume | No denominator means no sample, not 0%; workload dependent |
+
+For freshness use the Flux query above with a concrete bucket, not dashboard
+variables, and per-host evaluation. For latency use the dashboard average
+recursion field with a fixed 5-minute range, reduce to last/mean as appropriate,
+and evaluate only when recent recursive replies exist. Use a fixed expected
+host inventory/independent probe: a missing series can disappear from a group.
+Verify alert firing, recovery, No Data/Error and routing with a test contact
+point before production. The dashboard drops negative counter deltas before
+windowing and the cache ratio uses uptime to reject observable resets. A reset
+followed by a larger counter or uptime before the next sample can be hidden;
+exact event accounting across unobserved restarts is not guaranteed. Rate
+values are sampled estimates. The average recursion time is a cumulative
+Unbound statistic, not a measured latency percentile or probe duration.
+
+At one source snapshot every 30 s, expect 2,880 points per resolver/day (one
+point with multiple fixed fields), or 1,051,200 per 365 days. Identical
+re-reads should overwrite, not add points. Measure line-protocol bytes per
+snapshot from the lab and multiply by points for a wire-volume estimate;
+InfluxDB disk footprint, indexes, WAL and compaction differ. Measure actual
+bucket growth on a representative test host before choosing retention. A 24h
+lab bucket is intentionally separate from any production retention proposal.

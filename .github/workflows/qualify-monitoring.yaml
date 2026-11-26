@@ -1,0 +1,42 @@
+name: Qualify stats-only monitoring
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'monitoring/**'
+      - 'tests/monitoring-live.t'
+      - 'tests/collect-stats.t'
+      - 'tests/lib/**'
+      - 'config/**'
+      - 'scripts/entrypoint.sh'
+      - 'scripts/healthcheck.sh'
+      - 'Dockerfile'
+      - 'Makefile'
+      - '.github/workflows/qualify-monitoring.yaml'
+  pull_request:
+    paths:
+      - 'monitoring/**'
+      - 'tests/monitoring-live.t'
+      - 'tests/collect-stats.t'
+      - 'tests/lib/**'
+      - 'config/**'
+      - 'scripts/entrypoint.sh'
+      - 'scripts/healthcheck.sh'
+      - 'Dockerfile'
+      - 'Makefile'
+      - '.github/workflows/qualify-monitoring.yaml'
+permissions:
+  contents: read
+jobs:
+  monitoring:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+      - name: Build disposable resolver
+        run: make build
+      - name: Qualify stats-only chain
+        run: make test-monitoring

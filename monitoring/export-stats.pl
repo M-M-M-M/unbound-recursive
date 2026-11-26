@@ -9,7 +9,7 @@ use File::Basename qw(dirname);
 my ($path) = @ARGV;
 defined($path) && @ARGV == 1 && $path =~ m{\A/} && !-l $path or die "usage: export-stats.pl /protected/path/stats.lp\n";
 my @required = qw(total.num.queries total.num.cachehits total.num.cachemiss total.recursion.time.avg);
-my %allowed = map { $_ => 1 } (@required, qw(total.num.recursivereplies total.num.queries_ip_ratelimited num.answer.rcode.SERVFAIL num.answer.rcode.NXDOMAIN num.query.type.A num.query.type.AAAA num.query.type.TXT num.query.type.PTR num.query.tcp num.query.udp mem.cache.rrset mem.cache.message time.up));
+my %allowed = map { $_ => 1 } (@required, qw(total.num.recursivereplies total.num.queries_ip_ratelimited num.answer.rcode.SERVFAIL num.answer.rcode.NXDOMAIN num.answer.rcode.NOERROR num.answer.rcode.REFUSED num.query.type.A num.query.type.AAAA num.query.type.TXT num.query.type.PTR num.query.type.HTTPS num.query.type.MX num.query.tcp num.query.udp mem.cache.rrset mem.cache.message time.up));
 my (%fields, $size);
 while (my $line = <STDIN>) {
     $size += length($line);

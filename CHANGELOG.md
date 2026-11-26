@@ -7,6 +7,19 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 
 ## [Unreleased]
 
+### Added (dev13)
+
+- Add `make digest` for index-only discovery, early multiarchitecture validation,
+  and previous/published index digest summaries in the publication workflow.
+- Reuse structural index validation in the manual/scheduled re-scan resolver.
+- Add locked stats-only collection helper, explicit timestamp precision and a
+  disposable native monitoring integration lab with InfluxDB 2.x, Telegraf and
+  Grafana, plus an independent AMD64 CI workflow.
+- Extend the Flux dashboard with freshness, uptime, cache ratio and selected
+  response/query types; document alert thresholds, missing data and reset limits.
+- Record operator-reported dev12 qualification; monitoring lab and re-scan
+  execution still require real Docker/CI evidence. No change to CVE policy.
+
 ### Changed (dev12)
 
 - Make confirmed purge destroy active DNSSEC state in both storage modes.

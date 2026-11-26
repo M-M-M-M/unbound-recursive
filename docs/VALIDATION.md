@@ -252,3 +252,27 @@ Preparation evidence: `make test-unit` passed 182 assertions under Linux
 (61 state-mock assertions, 18 more than dev11). Shell syntax and the live TAP
 file compile successfully. Docker is not available in the preparation runtime;
 no live bind or volume tests were executed for dev12.
+
+## dev12 operator report and dev13 preparation
+
+The operator reported successful local dev12 tests (182 offline, 18 volume,
+22 bind assertions), anonymous verification of both indexes and a successful
+manual signed-deployment/rollback workflow after correcting the digest inputs.
+The earlier failed workflow used the two platform digests of one build. The
+correct multiarchitecture indexes were:
+
+- dev8: `sha256:1f174bcd92333948337b359a0773aaefbff1e50eeddc6c22a6003ac356562e81`
+- dev12: `sha256:54805783f2fab5ea443e7eca2bf9e819a981dbce26bf1a45f09a5b8f14565bbb`
+
+Successful final workflow logs were not provided; the report is operator
+confirmation, not independently re-inspected CI evidence. Re-scan, production-
+like Linux permissions/SELinux and host hardening remain open.
+
+Dev13 preparation: `make test-unit` passed 195 assertions on Linux (37 deploy,
+6 collector, other suites unchanged). The live monitoring TAP file compiles;
+Docker is unavailable in the preparation environment, so the lab and new CI
+workflow have not run. Follow `make test-monitoring` on a disposable Docker
+host and retain the AMD64 CI run. The lab checks source timestamps, duplicate
+point handling, real statistics, read-only handoff, Flux dashboard queries,
+restart/reset and freshness after stopping the resolver. Actual alert delivery,
+retention expiry and real storage footprint remain separate acceptance tests.

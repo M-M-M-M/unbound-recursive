@@ -37,3 +37,13 @@ and [TODO](TODO.md) for acceptance and prioritized work.
 - Keep named-volume compatibility; prefer a dedicated bind directory where host
   backup integration is required. Confirmed purge destroys the active trust anchor in both modes; in bind mode it deletes only root.key, never the directory or unrelated files. Validate
   both state profiles and migrations before release.
+
+## Next development snapshots
+
+- dev13: qualify monitoring end to end and simplify digest selection; verify
+  the manual and scheduled re-scan. Retain separate monitoring evidence.
+- dev14: bounded load, performance, resource and network/host hardening tests;
+  continue the remaining HIGH CVE reachability review.
+- dev15: production-like deployment, state migration and release-gate review.
+- 0.1.0-rc.1 / 0.1.0: only after explicit acceptance; snapshot numbers are not
+  stable release promises.

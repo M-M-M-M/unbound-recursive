@@ -47,6 +47,7 @@ if ($tool eq 'cosign') {
     exit 0;
 }
 if ($args =~ /imagetools inspect .*:latest/) { print encode_json({digest=>$new}); }
+elsif ($args =~ /imagetools inspect .*--raw/ && $ENV{MONO_MANIFEST}) { print encode_json({config=>{digest=>$old}}); }
 elsif ($args =~ /imagetools inspect .*--raw/) { print encode_json({manifests=>[map {{digest=>'sha256:'.($_ eq 'amd64'?'c':'d') x 64,platform=>{os=>'linux',architecture=>$_}}} qw(amd64 arm64)]}); }
 elsif ($args =~ /compose -f compose.yaml ps -q/) { print "abcdef123456\n"; }
 elsif ($args =~ /inspect --format .*State.Health.Status/) { print "healthy\n"; }
@@ -60,7 +61,13 @@ for my $tool (qw(docker cosign)) { symlink 'mock', "bin/$tool" or die $!; }
 local $ENV{PATH} = "$root/bin:$ENV{PATH}";
 local $ENV{BACKUP_DIR} = "$root/backups";
 sub invoke { return run_command([$^X, $source, @_], '', 30); }
-my $r = invoke('verify', 'latest');
+my $r = invoke('digest', 'latest');
+is($r->{code}, 0, 'digest latest resolves index');
+is($r->{stdout}, "$new\n", 'digest command prints only SHA-256');
+unlike(read_bytes('commands'), qr/^cosign /m, 'digest discovery does not claim verification');
+{ local $ENV{MONO_MANIFEST}=1; my $m=invoke('verify',$new); isnt($m->{code},0,'single-platform manifest rejected'); like($m->{stderr},qr/multiarchitecture.*amd64.*arm64/,'actionable manifest error'); unlike(read_bytes('commands'),qr/^cosign /m,'manifest checked before signature'); }
+isnt(invoke('digest', 'arbitrary-tag')->{code},0,'arbitrary tag refused');
+$r = invoke('verify', 'latest');
 is($r->{code}, 0, 'verify latest succeeds');
 is($r->{stdout}, "$repo\@$new\n", 'immutable reference returned');
 my $commands = read_bytes('commands');

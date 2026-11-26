@@ -1,0 +1,80 @@
+# Disposable integration lab only; never use these services in production.
+services:
+  unbound:
+    image: unbound-recursive:dev
+    user: '10001:10001'
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    tmpfs:
+      - /run/resolver:uid=10001,gid=10001,mode=0750,size=1m
+      - /tmp:uid=10001,gid=10001,mode=0700,size=16m
+    volumes: [state:/state]
+    networks: [resolver]
+    mem_limit: 512m
+    cpus: 1.0
+    pids_limit: 64
+  influxdb:
+    image: influxdb:2.7.12-alpine
+    environment:
+      DOCKER_INFLUXDB_INIT_MODE: setup
+      DOCKER_INFLUXDB_INIT_USERNAME: lab
+      DOCKER_INFLUXDB_INIT_PASSWORD: ${LAB_PASSWORD:?run the disposable test}
+      DOCKER_INFLUXDB_INIT_ADMIN_TOKEN: ${LAB_TOKEN:?run the disposable test}
+      DOCKER_INFLUXDB_INIT_ORG: lab
+      DOCKER_INFLUXDB_INIT_BUCKET: resolver-lab
+      DOCKER_INFLUXDB_INIT_RETENTION: 24h
+      INFLUX_TOKEN: ${LAB_TOKEN:?run the disposable test}
+    volumes:
+      - influx-data:/var/lib/influxdb2
+      - influx-config:/etc/influxdb2
+    networks: [metrics]
+    healthcheck:
+      test: [CMD, influx, ping, --host, 'http://localhost:8086']
+      interval: 3s
+      timeout: 3s
+      retries: 40
+    mem_limit: 768m
+  telegraf:
+    image: telegraf:1.38.4
+    entrypoint: [telegraf]
+    command: ['--config', /etc/telegraf/telegraf.conf]
+    user: '${LAB_UID:?}:${LAB_GID:?}'
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    environment:
+      INFLUX_TOKEN: ${LAB_TOKEN:?run the disposable test}
+    volumes:
+      - ./metrics:/metrics:ro
+      - ./telegraf.conf:/etc/telegraf/telegraf.conf:ro
+    networks: [metrics]
+    depends_on:
+      influxdb: {condition: service_healthy}
+    mem_limit: 256m
+  grafana:
+    image: grafana/grafana:12.4.16-ubuntu
+    environment:
+      GF_SECURITY_ADMIN_USER: lab
+      GF_SECURITY_ADMIN_PASSWORD: ${LAB_PASSWORD:?run the disposable test}
+      GF_USERS_ALLOW_SIGN_UP: 'false'
+      GF_ANALYTICS_REPORTING_ENABLED: 'false'
+      GF_ANALYTICS_CHECK_FOR_UPDATES: 'false'
+      LAB_TOKEN: ${LAB_TOKEN:?run the disposable test}
+    ports: ['127.0.0.1::3000']
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./provisioning:/etc/grafana/provisioning:ro
+      - ./dashboards:/var/lib/grafana/lab-dashboards:ro
+    networks: [metrics]
+    depends_on:
+      influxdb: {condition: service_healthy}
+    mem_limit: 768m
+networks:
+  resolver: {}
+  metrics: {}
+volumes:
+  state: {}
+  influx-data: {}
+  influx-config: {}
+  grafana-data: {}

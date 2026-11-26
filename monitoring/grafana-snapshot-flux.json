@@ -4,7 +4,7 @@
   "title": "Unbound Recursive \u2014 stats-only snapshot",
   "description": "Operator-exported stats_noreset snapshots, no administrative socket access.",
   "schemaVersion": 39,
-  "version": 1,
+  "version": 2,
   "refresh": "30s",
   "time": {
     "from": "now-6h",
@@ -54,7 +54,7 @@
       "targets": [
         {
           "refId": "A",
-          "query": "from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"unbound_snapshot\" and r.service == \"unbound-recursive\" and (r._field == \"total_num_queries\"))\n  |> aggregateWindow(every: v.windowPeriod, fn: last, createEmpty: false)\n  |> derivative(unit: 1s, nonNegative: true)",
+          "query": "from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"unbound_snapshot\" and r.service == \"unbound-recursive\" and (r._field == \"total_num_queries\"))\n  |> derivative(unit: 1s, nonNegative: true, initialZero: false)\n  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)",
           "datasource": {
             "type": "influxdb",
             "uid": "${DS_INFLUXDB}"
@@ -91,7 +91,7 @@
       "targets": [
         {
           "refId": "A",
-          "query": "from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"unbound_snapshot\" and r.service == \"unbound-recursive\" and (r._field == \"total_num_cachehits\"))\n  |> aggregateWindow(every: v.windowPeriod, fn: last, createEmpty: false)\n  |> derivative(unit: 1s, nonNegative: true)",
+          "query": "from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"unbound_snapshot\" and r.service == \"unbound-recursive\" and (r._field == \"total_num_cachehits\"))\n  |> derivative(unit: 1s, nonNegative: true, initialZero: false)\n  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)",
           "datasource": {
             "type": "influxdb",
             "uid": "${DS_INFLUXDB}"
@@ -128,7 +128,7 @@
       "targets": [
         {
           "refId": "A",
-          "query": "from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"unbound_snapshot\" and r.service == \"unbound-recursive\" and (r._field == \"total_num_cachemiss\"))\n  |> aggregateWindow(every: v.windowPeriod, fn: last, createEmpty: false)\n  |> derivative(unit: 1s, nonNegative: true)",
+          "query": "from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"unbound_snapshot\" and r.service == \"unbound-recursive\" and (r._field == \"total_num_cachemiss\"))\n  |> derivative(unit: 1s, nonNegative: true, initialZero: false)\n  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)",
           "datasource": {
             "type": "influxdb",
             "uid": "${DS_INFLUXDB}"
@@ -202,7 +202,7 @@
       "targets": [
         {
           "refId": "A",
-          "query": "from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"unbound_snapshot\" and r.service == \"unbound-recursive\" and (r._field == \"num_answer_rcode_SERVFAIL\"))\n  |> aggregateWindow(every: v.windowPeriod, fn: last, createEmpty: false)\n  |> derivative(unit: 1s, nonNegative: true)",
+          "query": "from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"unbound_snapshot\" and r.service == \"unbound-recursive\" and (r._field == \"num_answer_rcode_SERVFAIL\"))\n  |> derivative(unit: 1s, nonNegative: true, initialZero: false)\n  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)",
           "datasource": {
             "type": "influxdb",
             "uid": "${DS_INFLUXDB}"
@@ -239,7 +239,7 @@
       "targets": [
         {
           "refId": "A",
-          "query": "from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"unbound_snapshot\" and r.service == \"unbound-recursive\" and (r._field == \"num_answer_rcode_NXDOMAIN\"))\n  |> aggregateWindow(every: v.windowPeriod, fn: last, createEmpty: false)\n  |> derivative(unit: 1s, nonNegative: true)",
+          "query": "from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"unbound_snapshot\" and r.service == \"unbound-recursive\" and (r._field == \"num_answer_rcode_NXDOMAIN\"))\n  |> derivative(unit: 1s, nonNegative: true, initialZero: false)\n  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)",
           "datasource": {
             "type": "influxdb",
             "uid": "${DS_INFLUXDB}"
@@ -261,7 +261,7 @@
     },
     {
       "id": 7,
-      "title": "A / AAAA / TXT / PTR queries/s",
+      "title": "Query types/s (selected)",
       "type": "timeseries",
       "gridPos": {
         "x": 0,
@@ -276,7 +276,7 @@
       "targets": [
         {
           "refId": "A",
-          "query": "from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"unbound_snapshot\" and r.service == \"unbound-recursive\" and (r._field == \"num_query_type_A\" or r._field == \"num_query_type_AAAA\" or r._field == \"num_query_type_TXT\" or r._field == \"num_query_type_PTR\"))\n  |> aggregateWindow(every: v.windowPeriod, fn: last, createEmpty: false)\n  |> derivative(unit: 1s, nonNegative: true)",
+          "query": "from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"unbound_snapshot\" and r.service == \"unbound-recursive\" and (r._field == \"num_query_type_A\" or r._field == \"num_query_type_AAAA\" or r._field == \"num_query_type_TXT\" or r._field == \"num_query_type_PTR\" or r._field == \"num_query_type_HTTPS\" or r._field == \"num_query_type_MX\"))\n  |> derivative(unit: 1s, nonNegative: true, initialZero: false)\n  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)",
           "datasource": {
             "type": "influxdb",
             "uid": "${DS_INFLUXDB}"
@@ -313,7 +313,7 @@
       "targets": [
         {
           "refId": "A",
-          "query": "from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"unbound_snapshot\" and r.service == \"unbound-recursive\" and (r._field == \"total_num_queries_ip_ratelimited\"))\n  |> aggregateWindow(every: v.windowPeriod, fn: last, createEmpty: false)\n  |> derivative(unit: 1s, nonNegative: true)",
+          "query": "from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"unbound_snapshot\" and r.service == \"unbound-recursive\" and (r._field == \"total_num_queries_ip_ratelimited\"))\n  |> derivative(unit: 1s, nonNegative: true, initialZero: false)\n  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)",
           "datasource": {
             "type": "influxdb",
             "uid": "${DS_INFLUXDB}"
@@ -387,7 +387,173 @@
       "targets": [
         {
           "refId": "A",
-          "query": "from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"unbound_snapshot\" and r.service == \"unbound-recursive\" and (r._field == \"num_query_tcp\"))\n  |> aggregateWindow(every: v.windowPeriod, fn: last, createEmpty: false)\n  |> derivative(unit: 1s, nonNegative: true)",
+          "query": "from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"unbound_snapshot\" and r.service == \"unbound-recursive\" and (r._field == \"num_query_tcp\"))\n  |> derivative(unit: 1s, nonNegative: true, initialZero: false)\n  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${DS_INFLUXDB}"
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        }
+      }
+    },
+    {
+      "id": 11,
+      "title": "Cache hit ratio (%)",
+      "type": "timeseries",
+      "gridPos": {
+        "x": 0,
+        "y": 40,
+        "w": 12,
+        "h": 8
+      },
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${DS_INFLUXDB}"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "query": "from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"unbound_snapshot\" and r.service == \"unbound-recursive\" and (r._field == \"total_num_cachehits\" or r._field == \"total_num_cachemiss\" or r._field == \"time_up\"))\n  |> pivot(rowKey: [\"_time\"], columnKey: [\"_field\"], valueColumn: \"_value\")\n  |> difference(columns: [\"total_num_cachehits\", \"total_num_cachemiss\", \"time_up\"], nonNegative: true)\n  |> filter(fn: (r) => exists r.time_up and r.time_up > 0.0 and exists r.total_num_cachehits and exists r.total_num_cachemiss and r.total_num_cachehits + r.total_num_cachemiss > 0.0)\n  |> map(fn: (r) => ({r with _value: 100.0 * r.total_num_cachehits / (r.total_num_cachehits + r.total_num_cachemiss), _field: \"cache_hit_percent\"}))\n  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${DS_INFLUXDB}"
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        }
+      }
+    },
+    {
+      "id": 12,
+      "title": "Age of latest collection",
+      "type": "stat",
+      "gridPos": {
+        "x": 12,
+        "y": 40,
+        "w": 12,
+        "h": 8
+      },
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${DS_INFLUXDB}"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "query": "from(bucket: \"${bucket}\")\n  |> range(start: -10m)\n  |> filter(fn: (r) => r._measurement == \"unbound_snapshot\" and r.service == \"unbound-recursive\" and r._field == \"total_num_queries\")\n  |> group(columns: [\"host\"])\n  |> last()\n  |> map(fn: (r) => ({r with _value: float(v: int(v: now()) - int(v: r._time)) / 1000000000.0}))",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${DS_INFLUXDB}"
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 120
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none"
+      }
+    },
+    {
+      "id": 13,
+      "title": "Resolver uptime",
+      "type": "timeseries",
+      "gridPos": {
+        "x": 0,
+        "y": 48,
+        "w": 12,
+        "h": 8
+      },
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${DS_INFLUXDB}"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "query": "from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"unbound_snapshot\" and r.service == \"unbound-recursive\" and r._field == \"time_up\")",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${DS_INFLUXDB}"
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        }
+      }
+    },
+    {
+      "id": 14,
+      "title": "Response codes/s (selected)",
+      "type": "timeseries",
+      "gridPos": {
+        "x": 12,
+        "y": 48,
+        "w": 12,
+        "h": 8
+      },
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${DS_INFLUXDB}"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "query": "from(bucket: \"${bucket}\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"unbound_snapshot\" and r.service == \"unbound-recursive\" and (r._field == \"num_answer_rcode_NOERROR\" or r._field == \"num_answer_rcode_SERVFAIL\" or r._field == \"num_answer_rcode_NXDOMAIN\" or r._field == \"num_answer_rcode_REFUSED\"))\n  |> derivative(unit: 1s, nonNegative: true, initialZero: false)\n  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)",
           "datasource": {
             "type": "influxdb",
             "uid": "${DS_INFLUXDB}"
