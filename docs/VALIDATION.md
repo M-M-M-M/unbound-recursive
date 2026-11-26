@@ -321,3 +321,23 @@ then opt-in `make benchmark`, `make benchmark-production`,
 into Grafana and retain evidence. The live monitoring test adds nine assertions
 for benchmark import and five dashboard queries (57 total if all run).
 Production image, resolver settings and CVE policy are unchanged.
+
+## dev15 release candidate preparation (not release approval)
+
+The dev14.2 operator-supplied benchmark JSON evidence is summarized in
+[performance evidence](PERFORMANCE-EVIDENCE.md). The local randomized image
+name failure (`-_` separator) was corrected on the operator's M1; smoke and
+all three CI workflows were subsequently reported successful. Dev15 includes
+the fix, asynchronous UDP, bounded endurance profiles and monitoring/retention
+operator procedures. Live Docker, long-run soak and new CI execution are
+required before a candidate is accepted. Do not infer release approval from
+unit tests. Current both-platform CVE reports, individual risk review, Linux
+host preflight, deterministic DNSSEC-negative tests, real alert delivery and
+retention expiry remain open. See TODO and HARDENING.
+
+Preparation evidence: `make test-unit` passed 321 assertions in 16 files on
+Linux. New UDP tests use real loopback sockets and deliberate response loss;
+profile and threshold checks are local Perl tests. Docker and live soak
+execution were unavailable in preparation. No commit, push or deployment
+was performed. The source is the supplied dev14.2 ZIP plus the operator's
+reported underscore normalization, not a newly synchronized checkout.

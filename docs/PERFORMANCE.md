@@ -111,3 +111,54 @@ benchmark streaming; no network bridge between labs is required. The
 monitoring integration test checks import and dashboard queries with a known
 synthetic report. Real Docker qualification and longer-duration retention,
 alert delivery and production-like soak remain pending.
+
+## dev15: endurance and asynchronous UDP
+
+See [measured evidence](PERFORMANCE-EVIDENCE.md) for the dev14.2 reference
+results. The 10,000 q/s target is a synthetic qualification objective, not
+an Internet recursion SLA. Baseline and stress preserve the previous
+sequential-client scenarios for comparison. The smoke and rate-limit UDP
+cases now use a paced asynchronous worker: a connected UDP socket per worker,
+up to 2,048 pending requests per worker, one-second per-query deadline, matching
+transaction ID and question, and independent response collection. Expired
+emission slots are skipped, never replayed. Timeouts no longer hold an entire
+worker idle. Unmatched datagrams are counted separately. No external service
+or new CPAN dependency is used.
+
+Opt-in only, with a local Docker context and sufficient uninterrupted uptime:
+
+```sh
+make benchmark-ratelimit   # re-qualify UDP limiting with the new generator
+make benchmark-soak        # 1,000 q/s for 60 min, then 10,000 q/s for 10 min
+make benchmark-soak-day    # 100 q/s for 24 hours, separate disposable run
+```
+
+The two soak profiles disable lab-only limits, exercise unique cold fixture
+names and keep the same resolver/fixture limits as before. The 24-hour test
+is a stability test, not a rate-limit test. Do not run multiple labs in
+parallel when comparing performance. Prevent machine sleep. Ctrl+C cancels;
+inspect the report directory for error diagnostics and resource samples.
+The client and host command deadlines are bounded; a 24-hour run is not a
+CI job. A long test writes only aggregate counts and a bounded histogram in
+each worker, not a row per query. Min/max/mean are measured; histogram-based
+median/p95/p99 are conservative upper estimates with bins of 0.01 ms below
+10 ms, 0.1 ms below 100 ms and 1 ms thereafter. JSON schema 3 gains optional
+`udp_mode`, `latency_resolution_ms`, `latency_histogram`, and unmatched reply
+counts; CSV gains `udp_mode`. Short sequential profiles retain exact sorted
+sample percentiles. The offered rate divides sent by emission window;
+successful rate includes the final response drain and worker completion.
+
+Soak acceptance: >=99% of scheduled requests fully sent, no send errors,
+>=99.99% valid responses among sends, p99 <5 ms and zero IP-limiter increments.
+Recovery probes must pass at the end. Failing to achieve offered load is a
+load-generator qualification failure, not proof of resolver saturation.
+Resource samples are retained as JSONL even if the phase fails, with a
+roughly 30-second interval during long phases. Progress is printed during
+long phases. Check actual memory trend/plateau and restart/OOM evidence; no
+automatic leak verdict is made. A stable memory plateau, recovery after
+actual saturation, and repeated Linux AMD64 results remain release gates.
+Higher experimental rates are deferred until stability is qualified.
+
+Long reports can be imported with the existing schema-3 Grafana importer.
+A 24-hour lab retention window may already exclude early points of a 24-hour
+run; JSON/CSV/JSONL remain the authoritative full evidence.

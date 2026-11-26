@@ -3,6 +3,6 @@ FROM debian:trixie-slim@sha256:8aa5a7bf5a1955bddbe7d74fcdd0b91ab30e74362a8b73af6
 RUN apt-get update && apt-get upgrade -y && apt-get install -y --no-install-recommends perl \
     && rm -rf /var/lib/apt/lists/*
 WORKDIR /bench
-COPY DNSBench.pm ClientWorkload.pm client.pl ./
+COPY DNSBench.pm ClientWorkload.pm AsyncUDP.pm client.pl ./
 USER 10001:10001
 CMD ["sleep", "infinity"]

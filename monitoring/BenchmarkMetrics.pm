@@ -12,7 +12,7 @@ sub number {
 }
 sub report_lines {
     my ($r,$run)=@_;
-    ref($r) eq 'HASH' && ($r->{schema}//0)==3 && ($r->{profile}//'') =~ /\A(?:quick|baseline|production|ratelimit|stress)\z/ &&
+    ref($r) eq 'HASH' && ($r->{schema}//0)==3 && ($r->{profile}//'') =~ /\A(?:quick|baseline|production|ratelimit|stress|soak|soak-day)\z/ &&
         $run =~ /\Arun-[A-Za-z0-9_]{8}\z/ && ref($r->{phases}) eq 'ARRAY' && @{$r->{phases}}>=1 && @{$r->{phases}}<=10
         or die "invalid benchmark report\n";
     my @lines;
@@ -24,7 +24,7 @@ sub report_lines {
         push @fields,'ip_limited='.number($p->{cache_delta}{'total.num.queries_ip_ratelimited'});
         for my $k (qw(p95 p99)) {push @fields,"${k}_ms=".number($p->{latency_ms}{$k}) if exists $p->{latency_ms}{$k};}
         push @lines,"unbound_benchmark_phase,$tags ".join(',',@fields)." $p->{phase_epoch}";
-        ref($p->{resource_samples}) eq 'ARRAY' && @{$p->{resource_samples}}<=100 or die "invalid resource samples\n";
+        ref($p->{resource_samples}) eq 'ARRAY' && @{$p->{resource_samples}}<=6000 or die "invalid resource samples\n";
         for my $s (@{$p->{resource_samples}}) {
             ($s->{role}//'') =~ /\A(?:client|resolver)\z/ or die "invalid sample role\n";
             ($s->{CPUPerc}//'') =~ /\A([0-9.]+)%\z/ or die "invalid CPU sample\n";

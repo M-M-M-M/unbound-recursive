@@ -7,6 +7,20 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 
 ## [Unreleased]
 
+### Added (dev15)
+
+- Normalize temporary Docker repository names, avoid removal of unbuilt images,
+  and cover underscore/separator regressions.
+- Add bounded asynchronous UDP for smoke, rate-limit and opt-in endurance
+  profiles; fixed-size latency histograms, independent timeouts, progress and
+  retained resource samples. Keep the short baseline/stress comparison.
+- Add 60-minute/10-minute and separate 24-hour soak profiles and explicit
+  acceptance thresholds; long runs are manual, never automatic CI jobs.
+- Record measured dev14.2 evidence; document alert delivery and retention
+  qualification, and add read-only lab retention metadata inspection.
+- Production resolver, deployment and CVE policy unchanged. Release gates
+  remain open pending operator evidence.
+
 ### Fixed (dev14.2)
 
 - Add a real, local-only DNS fixture healthcheck (port 5354 and exact A answer)

@@ -55,3 +55,7 @@ and [TODO](TODO.md) for acceptance and prioritized work.
 - dev15: production-like deployment, state migration and release-gate review.
 - 0.1.0-rc.1 / 0.1.0: only after explicit acceptance; snapshot numbers are not
   stable release promises.
+
+- Treat 10,000 q/s as an isolated synthetic performance target, not a record or
+  Internet recursion guarantee. Prioritize stability, recovery, actual alerts
+  and release security gates; leave exploratory higher-rate tests optional.

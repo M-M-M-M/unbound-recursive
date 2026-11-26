@@ -18,8 +18,8 @@ use Time::HiRes qw(sleep);
 my $root = abs_path("$RealBin/..");
 my $dir = "$root/.monitoring-lab";
 my ($op,$report_path) = @ARGV;
-(@ARGV == 1 && $op =~ /\A(?:start|open|traffic|status|logs|usage|stop|clean)\z/ || @ARGV == 2 && $op eq 'benchmark-import')
-    or die "usage: labctl.pl start|open|traffic|status|logs|usage|stop|clean|benchmark-import REPORT\n";
+(@ARGV == 1 && $op =~ /\A(?:start|open|traffic|status|logs|usage|retention|stop|clean)\z/ || @ARGV == 2 && $op eq 'benchmark-import')
+    or die "usage: labctl.pl start|open|traffic|status|logs|usage|retention|stop|clean|benchmark-import REPORT\n";
 $< != 0 or die "run as a non-root Docker operator\n";
 require_local_docker();
 my ($benchmark_lp,$benchmark_run);
@@ -32,7 +32,7 @@ if ($op eq 'benchmark-import') {
 }
 umask 077;
 sysopen(my $lock, "$dir.lock", O_CREAT | O_RDWR | O_NOFOLLOW, 0600) or die "open lab lock: $!\n";
-if ($op !~ /\A(?:open|status|logs|usage)\z/) {
+if ($op !~ /\A(?:open|status|logs|usage|retention)\z/) {
     flock($lock, LOCK_EX | LOCK_NB) or die "lab busy; stop monitoring-traffic with Ctrl+C first\n";
 }
 sub read_file {
@@ -129,6 +129,7 @@ if ($op eq 'start') {
 } elsif ($op eq 'status') { compose('ps'); }
 elsif ($op eq 'logs') { compose('logs','--tail=50'); }
 elsif ($op eq 'usage') { compose('exec','-T','influxdb','du','-sk','/var/lib/influxdb2','/etc/influxdb2'); }
+elsif ($op eq 'retention') { compose('exec','-T','influxdb','influx','bucket','list','--org','lab','--name','resolver-lab'); }
 elsif ($op eq 'stop') { compose('stop'); }
 elsif ($op eq 'clean') {
     compose('down','--volumes','--remove-orphans');

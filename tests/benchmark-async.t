@@ -1,0 +1,52 @@
+use v5.26;
+use strict;
+use warnings;
+use Test::More;
+use FindBin;
+use lib "$FindBin::Bin/../benchmark";
+use ClientWorkload qw(run_phase);
+use AsyncUDP qw(merge_workers);
+use Profiles qw(profile_cases resolver_config validate_soak);
+use IO::Socket::INET;
+use POSIX qw(_exit);
+use Time::HiRes qw(time);
+my $server=IO::Socket::INET->new(LocalAddr=>'127.0.0.1',LocalPort=>0,Proto=>'udp') or BAIL_OUT($!);
+my $port=$server->sockport;
+my $pid=fork(); defined $pid or die $!;
+if (!$pid) {
+    local $SIG{TERM}=sub {_exit(0)};
+    alarm 10;
+    my $i=0;
+    while (1) {
+        my $peer=recv($server,my $q,65535,0); next unless defined $peer;
+        next if ++$i%2; # Drop half: timeouts must not block emission.
+        my $r=substr($q,0,2).pack('n5',0x8180,1,1,0,0).substr($q,12)."\xc0\x0c".pack('nnNnC4',1,1,300,4,192,0,2,80);
+        send($server,$r,0,$peer) or _exit(2);
+    }
+}
+close $server;
+my $start=time();
+my $r=eval {run_phase('127.0.0.1',$port,'udp-loss','udp','cold',40,2,40,1,'async')};
+my $error=$@; kill 'TERM',$pid; waitpid($pid,0); die $error if $error;
+is($r->{requested},40,'requested independent of replies');
+cmp_ok($r->{sent},'>=',35,'timeouts do not serialize emission');
+cmp_ok($r->{successes},'>=',17,'valid matching responses');
+cmp_ok($r->{outcomes}{timeout},'>=',17,'timeouts separately counted');
+is($r->{sent},$r->{successes}+$r->{outcomes}{timeout},'wire outcome accounting');
+is($r->{attempted}+$r->{not_attempted},40,'schedule accounting');
+is($r->{udp_mode},'async','mode recorded');
+is($r->{latency_resolution_ms},0.01,'histogram resolution explicit');
+cmp_ok(time()-$start,'<',4,'bounded drain');
+my $m=merge_workers([{sent=>3,outcomes=>{ok=>2,timeout=>1},hist=>{11=>1,21=>1},sum=>0.31,min=>0.105,max=>0.205,stray=>1,end=>3},{sent=>1,outcomes=>{ok=>1},hist=>{31=>1},sum=>0.305,min=>0.305,max=>0.305,stray=>0,end=>4}],1,5);
+is($m->{successes},3,'merged successes'); is($m->{not_attempted},1,'merged schedule'); is($m->{latency_ms}{p99},0.31,'bounded upper percentile'); is($m->{latency_ms}{median},0.21,'merged median upper bound'); is($m->{unmatched_udp_replies},1,'stray datagrams counted');
+my @soak=profile_cases('soak'); is_deeply([map {$_->[6]} @soak],[3600,600],'soak duration');
+my @day=profile_cases('soak-day'); is($day[0][3],8640000,'day bounded count');
+like(resolver_config("ip-ratelimit: 100\nratelimit: 200\n",'soak-day'),qr/ip-ratelimit: 0/,'soak limits disabled only in private copy');
+ok(!eval {run_phase('127.0.0.1',1,'udp-test','udp','warm',66000,1,1000,66,'async');1},'long warm ID reuse rejected');
+my $accept={case=>'udp-soak',requested=>10000,attempted=>10000,sent=>10000,successes=>9999,latency_ms=>{p99=>4.99}};
+ok(validate_soak($accept),'soak acceptance at reliability boundary');
+ok(!eval {validate_soak({%$accept,sent=>9800});1},'insufficient offered load rejected');
+ok(!eval {validate_soak({%$accept,successes=>9998});1},'excess loss rejected');
+ok(!eval {validate_soak({%$accept,latency_ms=>{p99=>5}});1},'p99 limit enforced');
+ok(!eval {validate_soak({%$accept,attempted=>10001});1},'send failures rejected');
+done_testing;

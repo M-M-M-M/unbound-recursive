@@ -14,4 +14,7 @@ like($lp,qr/role=resolver cpu_percent=2.5,memory_bytes=10485760 1795680002/,'res
 for my $bad ("bad\nmeasurement",'run-abc,xyz') {ok(!eval {report_lines($r,$bad);1},'reject unsafe run tag');}
 my $b=dclone($r); $b->{phases}[0]{target_qps}="1\nmeasurement"; ok(!eval {report_lines($b,'run-Abcd1234');1},'reject line injection');
 $b=dclone($r); $b->{schema}=2; ok(!eval {report_lines($b,'run-Abcd1234');1},'reject old schema');
+$b=dclone($r); $b->{profile}='soak-day';
+$b->{phases}[0]{resource_samples}=[map {{role=>'resolver',CPUPerc=>'2.5%',MemUsage=>'10MiB / 512MiB',elapsed=>$_*30}} 1..101];
+like(report_lines($b,'run-Abcd1234'),qr/profile=soak-day/,'long soak report import');
 done_testing;

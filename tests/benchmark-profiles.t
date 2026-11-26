@@ -17,6 +17,7 @@ like(resolver_config($base,'stress'),qr/ip-ratelimit: 0/,'stress lab disables li
 ok(!eval {resolver_config('', 'baseline');1},'missing limits fail closed');
 ok(!eval {profile_cases('invalid');1},'unknown profile refused');
 my @quick=profile_cases('quick'); is(scalar @quick,4,'four quick cases');
+is_deeply([map {$_->[7]} @quick],[qw(async async new new)],'quick covers async UDP and TCP');
 my @rate=profile_cases('ratelimit'); is_deeply([map {$_->[5]} @rate],[50,200,50,200],'below/above threshold for both protocols');
 my @stress=profile_cases('stress'); ok(grep($_->[6]==60,@stress),'sustained 60-second phase');
 ok(grep($_->[7] eq 'persistent',profile_cases('baseline')),'persistent TCP scenario');

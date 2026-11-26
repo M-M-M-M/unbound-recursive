@@ -16,7 +16,7 @@ Once action is done, remove the priority number.
 - [ ] Probe IPv4/IPv6 exposure and unauthorized isolated lab clients; check source-IP NAT behavior. 6️⃣
 - [ ] Audit installed package inventory and qualify signed deployment on isolated production-like host; dev12 manual CI workflow reported passed. 7️⃣
 - [ ] Qualify real alert delivery, per-host absence, retention and deployment-specific permissions; dev13 CI and M1 dashboard reported successful. 8️⃣
-- [ ] Qualify dev14.2 smoke on M1/native CI, paced baseline, production-like, rate limiting, stress and report import; retain results. Add deterministic DNSSEC-negative fixture and longer soak tests. 9️⃣
+- [ ] Qualify dev15 asynchronous UDP and long soak profiles (60 min/10 min/24 h), memory plateau and recovery; repeat native AMD64; add deterministic DNSSEC-negative fixture. 9️⃣
 - [ ] Record all acceptance evidence and approve release before any production deployment. 🔟
 
 ## Later milestones
@@ -27,6 +27,8 @@ Once action is done, remove the priority number.
 - [ ] 1.0.0: full operational and recovery qualification for supported deployment profiles. #️⃣
 
 ## Completed
+
+- [x] Dev14.2: operator logs show 408 passing assertions before randomized-name failure; corrected smoke 48/48 and all three workflows reported passed. Four supplied JSON reports reviewed; measured evidence in docs/PERFORMANCE-EVIDENCE.md. Dev15 implements the name fix and bounded async/soak profiles; live validation pending.
 
 - [x] Dev14.1 local report: 7,645 attempts, 5,467 successes, 2,178 IP-limited counter increments, 355 unscheduled; recovery passed. Both native CI ACL audits passed; fixture healthcheck missing. Dev14.2 corrective implementation (live validation pending).
 

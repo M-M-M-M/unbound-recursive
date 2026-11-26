@@ -261,3 +261,41 @@ This uses the lab InfluxDB CLI, not production metrics, and does not connect
 benchmark and monitoring networks. Stop foreground traffic before import.
 Do not interpret synthetic liveness traffic as a performance test. Live
 benchmark streaming is not implemented.
+
+## dev15: operator alert and storage acceptance checklist
+
+No production alert rules or contact destinations are installed automatically.
+Use a fresh disposable lab and a test contact point (do not put credentials
+or addresses in Git). Establish a baseline with `make monitoring-start`,
+`make monitoring-traffic` and a second terminal for `make monitoring-usage`.
+`make monitoring-retention` lists the actual lab bucket retention metadata;
+it is read-only, and does not prove physical deletion.
+
+1. Set a Grafana-managed freshness rule with the lab Flux datasource and
+   `resolver-lab` bucket, using the query above. For the single lab resolver,
+   evaluate every 30 s, reduce to last, threshold >120 s, and configure No
+   Data and Error explicitly as Alerting. Use a 1-minute pending period;
+   route to a dedicated test contact point. Verify normal state while traffic
+   runs and send a contact-point test notification.
+2. Ctrl+C the foreground traffic loop without stopping Grafana/InfluxDB.
+   Observe source age increasing, Pending, then Alerting; retain rule history
+   and actual received notification. Restart `make monitoring-traffic` and
+   confirm recovery plus resolved notification if enabled. Separately test
+   No Data and datasource errors using a disposable rule/datasource, then
+   remove that rule. Do not treat a dashboard panel as proof of alert delivery.
+3. Measure `make monitoring-usage` before/after a controlled 24-hour interval
+   at known collection cadence; capture the count of distinct source samples,
+   not Telegraf reads. Compare KiB growth, WAL and compaction variability;
+   repeat after compaction. Use observed daily disk growth for estimates, with
+   headroom. Stop background synthetic traffic before clean.
+4. Verify actual expiration using a disposable test bucket and known old and
+   recent timestamped samples: record retention setting and shard-group
+   duration, wait through the retention enforcement/shard boundary, verify
+   expired data disappears while recent data remains. Retention is shard
+   based; exact deletion at the configured age is not assumed. Never shorten
+   production retention or write synthetic data to production buckets.
+5. Record timestamps, observed results and routing success; mark each gate
+   independently. These are manual acceptance tests, not yet executed or
+   evidence of alert delivery or retention expiry. Stop or clean the lab when
+   done. Production uses per-expected-host alerts, separate scoped tokens and
+   approved routing; single-lab rules do not certify those deployments.
