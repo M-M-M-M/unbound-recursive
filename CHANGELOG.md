@@ -7,6 +7,18 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 
 ## [Unreleased]
 
+### Added (dev14)
+
+- Add interactive, isolated Grafana lab lifecycle and InfluxDB disk usage command.
+- Add core Perl synthetic loopback UDP/TCP benchmark with response validation,
+  bounded concurrency, warm/cold cache and post-load recovery checks,
+  JSON/CSV/Markdown reports and sampled Docker resources.
+- Add isolated production ACL test and effective process security assertions;
+  qualify smoke tests in native AMD64 and ARM64 CI.
+- Inventory the 25 historical dev8 HIGH CVEs individually; current advisory
+  and reachability review remains open. No CVE policy or production image change.
+- Record operator-reported dev13 CI, manual re-scan and macOS Grafana success.
+
 ### Added (dev13)
 
 - Add `make digest` for index-only discovery, early multiarchitecture validation,

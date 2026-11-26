@@ -1,0 +1,56 @@
+name: Qualify isolated DNS performance and network ACL
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'benchmark/**'
+      - 'lib/**'
+      - 'tests/local-docker.t'
+      - 'tests/benchmark.t'
+      - 'tests/network-live.t'
+      - 'tests/lib/**'
+      - 'config/**'
+      - 'scripts/**'
+      - 'Dockerfile'
+      - 'Makefile'
+      - '.github/workflows/qualify-performance.yaml'
+  pull_request:
+    paths:
+      - 'benchmark/**'
+      - 'lib/**'
+      - 'tests/local-docker.t'
+      - 'tests/benchmark.t'
+      - 'tests/network-live.t'
+      - 'tests/lib/**'
+      - 'config/**'
+      - 'scripts/**'
+      - 'Dockerfile'
+      - 'Makefile'
+      - '.github/workflows/qualify-performance.yaml'
+permissions:
+  contents: read
+jobs:
+  smoke:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {arch: amd64, runner: ubuntu-24.04}
+          - {arch: arm64, runner: ubuntu-24.04-arm}
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+      - run: make build
+      - run: make test-network
+      - run: make test-benchmark
+      - name: Retain smoke benchmark report
+        if: always()
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        with:
+          name: benchmark-smoke-${{ matrix.arch }}
+          path: benchmark-results/
+          if-no-files-found: warn

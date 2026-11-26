@@ -223,3 +223,38 @@ snapshot from the lab and multiply by points for a wire-volume estimate;
 InfluxDB disk footprint, indexes, WAL and compaction differ. Measure actual
 bucket growth on a representative test host before choosing retention. A 24h
 lab bucket is intentionally separate from any production retention proposal.
+
+## Interactive development lab (dev14)
+
+Run from a local Docker context as a non-root operator. `make build` first.
+This lab is separate from the production Compose project and from the
+one-shot integration test. It uses a generated project name and random
+credentials stored in the ignored, owner-only `.monitoring-lab/` directory.
+It binds Grafana to a dynamically assigned IPv4 loopback port only.
+
+```sh
+make monitoring-start   # start or resume; prints Grafana URL and lab password
+make monitoring-open    # print login; open browser on macOS
+make monitoring-traffic # foreground, collect and send synthetic DNS requests
+# In a second terminal:
+make monitoring-status
+make monitoring-logs
+make monitoring-usage   # InfluxDB data/config size in KiB, live snapshot
+# Ctrl+C in the traffic terminal first, then:
+make monitoring-stop    # keep volumes, credentials and history
+make monitoring-clean   # remove ONLY this disposable lab and all its history
+```
+
+Stop traffic before stop/clean; lifecycle commands refuse concurrent mutation.
+The traffic loop runs in the foreground, not in an installed daemon or cron.
+Without it the last collection becomes stale, as expected. `monitoring-clean`
+is explicitly destructive for the disposable lab only and is not `make purge`.
+No production resolver state or monitoring credentials are used. Keep the lab
+identity file intact until clean succeeds. A new version of the lab's Compose
+or dashboard is copied only at first creation; clean and restart to adopt
+new definitions. The 24-hour retention setting is not a verified expiry test.
+`monitoring-usage` includes storage overhead and does not by itself establish
+per-day growth; measure before and after a controlled interval. Do not publish
+logs or credentials. Visualizing the separate benchmark workload in Grafana
+requires a later integration; do not interpret synthetic liveness traffic as a
+performance test.

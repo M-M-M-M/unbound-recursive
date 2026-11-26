@@ -4,7 +4,7 @@ A self-hosted recursive DNS resolver based on Unbound and Debian slim. No public
 recursive forwarder is used. The default deployment is private, not a public
 DNS service. DNSSEC authenticates signed DNS data; it does not encrypt recursion.
 
-**Status: 0.1.0-dev13 — stats-only monitoring qualification lab and clearer manifest discovery, not production-qualified.**
+**Status: 0.1.0-dev14 — interactive monitoring lab, bounded synthetic DNS benchmark and network audit, not production-qualified.**
 Dev6 passed macOS M1 recovery tests; dev7 CI passed functional tests but was
 blocked by four CRITICAL findings. Dev8 replaces the in-container BIND DNS
 client with LDNS drill, retaining Debian upgrades, the CVE policy and empty
@@ -12,7 +12,7 @@ exception register. Dev8 CI passed on both architectures, signed GHCR publicatio
 and operator Cosign verification succeeded. Dev9 pins the tested Debian base,
 adds digest-only update/rollback and stats-file handoff. Dev10 removes the
 GitHub CLI requirement, gates promotion on anonymous Cosign verification and
-adds a manually dispatched live update/rollback qualification. Dev11 adds an optional dedicated host directory for persistent DNSSEC state. Dev12 makes confirmed purge destroy the active trust anchor in either storage mode. Dev12 operator-reported local and signed-deployment qualification passed. Dev13 adds a disposable monitoring lab, collection helper, extended dashboard and manifest discovery. Live monitoring qualification and host review remain required. DoH,
+adds a manually dispatched live update/rollback qualification. Dev11 adds an optional dedicated host directory for persistent DNSSEC state. Dev12 makes confirmed purge destroy the active trust anchor in either storage mode. Dev12 operator-reported local and signed-deployment qualification passed. Dev13 adds a disposable monitoring lab, collection helper, extended dashboard and manifest discovery. Dev13 monitoring and manual re-scan passed per operator report. Dev14 adds interactive lab commands, isolated performance and ACL smoke tests; live qualification and host review remain required. DoH,
 DoT, authentication, per-client monitoring and automated blocking remain planned.
 Hardening is mandatory from 0.1.0; the outstanding supply-chain checks are
 release blockers, not deferred to a later version.
@@ -151,3 +151,17 @@ Docker tests on production hosts.
 When upgrading an existing dev4 checkout by copying this bundle, remove the
 four obsolete tracked Python files explicitly (`git rm`); copying files with
 rsync does not remove them. See the changelog for their paths.
+
+### Development monitoring and performance
+
+After `make build`, use `make monitoring-start`, `make monitoring-open` and
+`make monitoring-traffic` to view synthetic local DNS activity in Grafana.
+Stop foreground traffic before `make monitoring-stop` (retains history) or
+`make monitoring-clean` (destroys the disposable lab only). See
+[monitoring](docs/MONITORING.md).
+
+`make test-network` and `make test-benchmark` use separate isolated labs;
+`make benchmark` is a bounded, opt-in UDP/TCP warm/cold and concurrent load
+experiment with local JSON/CSV/Markdown reports. See [performance](docs/PERFORMANCE.md).
+No benchmark queries are sent to public DNS servers. The results do not measure
+Internet recursion, and do not authorize production deployment.

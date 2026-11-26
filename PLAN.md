@@ -40,10 +40,12 @@ and [TODO](TODO.md) for acceptance and prioritized work.
 
 ## Next development snapshots
 
-- dev13: qualify monitoring end to end and simplify digest selection; verify
-  the manual and scheduled re-scan. Retain separate monitoring evidence.
-- dev14: bounded load, performance, resource and network/host hardening tests;
-  continue the remaining HIGH CVE reachability review.
+- dev13: operator reports monitoring CI, manual re-scan and macOS Grafana
+  visualization successful; retain reports and verify scheduled execution.
+- dev14: interactive lab, bounded synthetic load and resource reporting,
+  native ACL smoke tests; qualify live and review current HIGH CVEs.
+  DNSSEC-negative fixture, prolonged soak, Grafana benchmark correlation and
+  production-like host audit remain open.
 - dev15: production-like deployment, state migration and release-gate review.
 - 0.1.0-rc.1 / 0.1.0: only after explicit acceptance; snapshot numbers are not
   stable release promises.

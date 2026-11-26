@@ -28,7 +28,7 @@ backup-state:
 restore-state:
 	UNBOUND_IMAGE=unbound-recursive:dev ./scripts/state.sh restore
 test-unit:
-	RUN_DOCKER_TESTS=0 prove -v tests/vulnerability-gate.t tests/state-mock.t tests/confirmation.t tests/healthcheck.t tests/package-policy.t tests/deploy.t tests/export-stats.t tests/collect-stats.t
+	RUN_DOCKER_TESTS=0 prove -v tests/vulnerability-gate.t tests/state-mock.t tests/confirmation.t tests/healthcheck.t tests/package-policy.t tests/deploy.t tests/export-stats.t tests/collect-stats.t tests/benchmark.t tests/local-docker.t
 test-state:
 	RUN_DOCKER_TESTS=1 prove -v tests/state-live.t
 test-state-bind:
@@ -42,3 +42,17 @@ digest:
 
 test-monitoring:
 	RUN_MONITORING_LIVE=1 prove -v tests/monitoring-live.t
+
+.PHONY: monitoring-start monitoring-open monitoring-traffic monitoring-status monitoring-logs monitoring-usage monitoring-stop monitoring-clean
+monitoring-start monitoring-open monitoring-traffic monitoring-status monitoring-logs monitoring-usage monitoring-stop monitoring-clean:
+	perl monitoring/labctl.pl $(@:monitoring-%=%)
+
+.PHONY: benchmark test-benchmark
+benchmark:
+	perl benchmark/run.pl
+test-benchmark:
+	perl benchmark/run.pl --quick
+
+.PHONY: test-network
+test-network:
+	RUN_NETWORK_LIVE=1 prove -v tests/network-live.t
