@@ -7,15 +7,15 @@ Once action is done, remove the priority number.
 
 ## 0.1.0 — security-first release gates
 
-- [ ] Qualify dev8 dependency closure and compare both Trivy reports with dev7; review any remaining CRITICAL findings against Debian advisories and exact installed versions before approving an exception. 0️⃣
-- [ ] Review full host hardening reference, pinned Actions and transitive installers; pin approved base image digest and define controlled refresh. 1️⃣
-- [ ] Qualify configured Trivy gate, per-platform SBOM attestations, signed manifest and provenance; verify on pull and test scheduled re-scan. 2️⃣
-- [ ] Qualify dev8 on macOS M1, both CI architectures and Linux amd64 production-like host; verify signed GHCR publication. 3️⃣
+- [ ] Review all remaining HIGH CVEs and reachable code; LDNS CVE-2026-10846 initial triage recorded; no exceptions. 0️⃣
+- [ ] Review full host hardening reference, pinned Actions and transitive installers; qualify pinned base refresh and dev9 build. 1️⃣
+- [ ] Qualify dev9 client provenance and both SBOM verifications; run revised scheduled/manual re-scan. 2️⃣
+- [ ] Qualify dev9 on macOS M1, both CI architectures and Linux amd64 production-like host. 3️⃣
 - [ ] Verify non-root effective privileges, protected deployment paths, SELinux, resource limits, firewall and Docker routes. 4️⃣
 - [ ] Verify first-start state permissions, trust anchor persistence/rollover and restart. 5️⃣
 - [ ] Probe IPv4/IPv6 exposure and unauthorized isolated lab clients; check source-IP NAT behavior. 6️⃣
-- [ ] Audit installed package inventory and dependency reduction opportunities; qualify digest-based deployment and rollback. 7️⃣
-- [ ] Qualify least-privilege stats-only collection or obtain explicit approval for administrative socket access; test Telegraf and Grafana. 8️⃣
+- [ ] Audit installed package inventory; qualify dev9 verified update and rollback on isolated host, including failure recovery. 7️⃣
+- [ ] Qualify dev9 stats-only collection, Telegraf, InfluxDB and Grafana including stale data alerts. 8️⃣
 - [ ] Add deterministic DNSSEC-negative fixture and bounded resource/load tests. 9️⃣
 - [ ] Record all acceptance evidence and approve release before any production deployment. 🔟
 
@@ -36,7 +36,7 @@ Once action is done, remove the priority number.
 - [x] Extend runtime hardening assertions in integration tests (passed on previous snapshot on M1).
 - [x] Previous snapshot: native M1 build/integration, GHCR amd64/arm64 publication and ARM64 image execution validated by operator.
 - [x] Correct absent-container restoration, verify persisted SHA-512 and add isolated live recovery test (dev6 live execution passed on M1 and CI).
-- [x] Configure SHA-pinned workflow, Trivy, SBOM/provenance attestations, Cosign signature and daily re-scan (CI qualification pending).
+- [x] Configure SHA-pinned workflow, Trivy, SBOM/provenance attestations, Cosign signature and daily re-scan (dev8 CI passed; re-scan pending).
 - [x] Convert Python tooling to core Perl and TAP tests; wire prove into Make and CI (dev6 tests passed on M1 and CI).
 
 - [x] Synchronize test confirmation with the actual PTY prompt and keep stdin open; add delayed/split prompt regression tests (Linux and macOS validated).
@@ -44,4 +44,8 @@ Once action is done, remove the priority number.
 - [x] Record dev6 operator qualification: 47 offline assertions and 18 live recovery assertions passed on macOS M1; both CI architectures reached the CVE gate.
 - [x] Upgrade base Debian packages at build time; add per-platform package inventory and configurable CVE gate with exact expiring exceptions, summary and Perl regression tests (dev7; live CI pending).
 - [x] Record dev7 CI evidence: Debian libzstd1 update removed the fixable finding; four unapproved CRITICAL findings still blocked publication on both architectures.
-- [x] Replace BIND diagnostic utilities with LDNS drill; adapt health and integration checks, add dependency regression guard, offline TAP tests and per-platform CI image-size evidence (dev8; live build pending).
+- [x] Replace BIND diagnostic utilities with LDNS drill; adapt health and integration checks, add dependency regression guard, offline TAP tests and per-platform CI image-size evidence (dev8; live CI passed).
+
+- [x] Dev8 CI on amd64/arm64 passed dependency guard, Trivy gate (0 CRITICAL, 0 blockers), SBOM/provenance, Cosign and GHCR promotion; operator Cosign verification passed. ARM64 size reduced from 152544990 to 142298403 bytes.
+- [x] Pin the tested Debian index digest; add reviewed-refresh docs and immutable re-scan selection (dev9, CI pending).
+- [x] Implement core Perl verified update/rollback and stats-only file export with offline TAP tests; live operator qualification remains pending.

@@ -4,11 +4,14 @@ A self-hosted recursive DNS resolver based on Unbound and Debian slim. No public
 recursive forwarder is used. The default deployment is private, not a public
 DNS service. DNSSEC authenticates signed DNS data; it does not encrypt recursion.
 
-**Status: 0.1.0-dev8 — reduced runtime dependencies, not production-qualified.**
+**Status: 0.1.0-dev9 — verified deployment tooling and stats-only monitoring, not production-qualified.**
 Dev6 passed macOS M1 recovery tests; dev7 CI passed functional tests but was
 blocked by four CRITICAL findings. Dev8 replaces the in-container BIND DNS
 client with LDNS drill, retaining Debian upgrades, the CVE policy and empty
-exception register. Live CI and host qualification remain required. DoH,
+exception register. Dev8 CI passed on both architectures, signed GHCR publication
+and operator Cosign verification succeeded. Dev9 pins the tested Debian base,
+adds digest-only update/rollback and stats-file handoff; live dev9 and host
+qualification remain required. DoH,
 DoT, authentication, per-client monitoring and automated blocking remain planned.
 Hardening is mandatory from 0.1.0; the outstanding supply-chain checks are
 release blockers, not deferred to a later version.
@@ -76,8 +79,8 @@ for amd64/arm64, tests each platform image and assembles a manifest from their
 published digests. Daily builds refresh Debian packages; they do not update
 production automatically. Review CI, scan results and pin the approved manifest
 digest before deploying. The [vulnerability policy](security/README.md) blocks fixable HIGH/CRITICAL and unapproved CRITICAL findings; unfixed HIGH findings warn by default. Direct GitHub Actions are SHA-pinned; Trivy, SBOM, provenance and Cosign
-checks are configured. The base image tag remains mutable and must be reviewed
-and pinned before production. See [supply-chain security](docs/SUPPLY-CHAIN.md).
+checks passed in dev8 CI. Debian base is pinned to the multiarch digest used
+in dev8; Dependabot proposes reviewed refreshes. See [supply-chain security](docs/SUPPLY-CHAIN.md).
 The development workflow may publish test snapshots only; do not treat `latest`
 as a qualified production release.
 
@@ -85,11 +88,13 @@ Use the approved operator account and protected deployment directory; keep
 site-specific addresses, FQDNs, paths and secrets in local inventory, not this
 public repository. No actual deployment has been inspected. See
 [deployment](docs/DEPLOYMENT.md) for digest-based updates, rollback, backup,
-permissions and acceptance checks. No remote SSH deployment is required.
+permissions and acceptance checks. See [verified upgrades](docs/UPGRADING.md)
+for `scripts/deploy.pl verify latest`, explicit digest updates and rollback.
+No remote SSH deployment is required.
 
 ## Monitoring and security
 
-- [Monitoring and logs](docs/MONITORING.md): native Telegraf input example,
+- [Monitoring and logs](docs/MONITORING.md): preferred stats-only file handoff, optional native Telegraf input example,
   starter InfluxDB 2/Flux Grafana dashboard, log rotation and limitations.
 - [Security and encrypted DNS](docs/SECURITY.md): threat model, private access,
   client authentication design and future HAProxy/TLS integration.

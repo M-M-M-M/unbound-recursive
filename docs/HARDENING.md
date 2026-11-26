@@ -13,13 +13,13 @@ by this document. Status reflects source inspection, not live validation.
 | Private DNS | Configured | Loopback host bindings, independent IPv4/IPv6 refusal probes, bridge ACL and NAT verification |
 | Resource and log budgets | Configured | Measured limits, restart and load/rotation tests |
 | DNSSEC | Configured | Valid and bogus DNSSEC tests, persistent trust anchor, recovery |
-| CI trust | Configured; unqualified | Pin action revisions, review dependency changes and minimum token permissions; no secrets on untrusted PRs |
-| Base image and Debian packages | Partial | Approved base digest; controlled refresh, record actual package versions and tested digests |
-| Vulnerability scan | Configured; unqualified | Trivy or reviewed equivalent, scan both platform images and block unacceptable findings; documented exceptions with expiry |
-| SBOM and provenance | Configured; unqualified | Generate per-platform inventories and attestations tied to exact digests |
-| Signature | Configured; unqualified | Sign released manifest; verify identity, issuer and digest on pull |
+| CI trust | Dev8 CI passed; review pending | Pin action revisions, review dependency changes and minimum token permissions; no secrets on untrusted PRs |
+| Base image and Debian packages | Pinned in dev9; rebuild pending | Approved base digest; controlled refresh, record actual package versions and tested digests |
+| Vulnerability scan | Dev8 CI passed | Trivy or reviewed equivalent, scan both platform images and block unacceptable findings; documented exceptions with expiry |
+| SBOM and provenance | Dev8 CI passed; client verification pending | Generate per-platform inventories and attestations tied to exact digests |
+| Signature | Dev8 CI and M1 Cosign passed | Sign released manifest; verify identity, issuer and digest on pull |
 | Operator and host security | Pending | Approved administrative boundary, protected paths, firewall, SELinux, UID/GID, backup and rollback evidence |
-| Monitoring boundary | Partial | Stats-only export or explicitly authorized administrative socket; no application access to Docker |
+| Monitoring boundary | Dev9 stats-file handoff; live test pending | Stats-only export or explicitly authorized administrative socket; no application access to Docker |
 | Secrets | N/A core | No secrets needed; review approved secrets framework before adding authentication |
 
 Development CI may publish test images; those are not releases. Until all

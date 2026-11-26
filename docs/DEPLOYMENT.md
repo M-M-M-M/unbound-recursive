@@ -27,12 +27,17 @@ Use an admin-protected .env (contains image digest and port, no secrets here).
 
 ## Install / pull update
 
+Dev9 adds a guarded operator-only script for the default profile. Follow
+[verified updates and rollback](UPGRADING.md) for first install, digest
+verification, updates, rollback and the failure recovery runbook. The manual
+procedure below remains available for reviewed emergency operations.
+
 From the protected release directory, copy compose.yaml and .env.example.
 Replace `UNBOUND_IMAGE` in .env with `ghcr.io/m-m-m-m/unbound-recursive@sha256:<approved manifest digest>`.
 Confirm architecture and package visibility in GHCR. Use tested digest rather
 than `latest`; compare digest to the qualified build, verify security reports
-and signature using [supply-chain verification](SUPPLY-CHAIN.md). The new
-workflow is not yet live-qualified. This is a release blocker: the commands
+and signature using [supply-chain verification](SUPPLY-CHAIN.md). Dev8 CI and Cosign verification succeeded, but dev9 operator tooling and host
+qualification remain release blockers: the commands
 below are for isolated qualification only until the [hardening gates](HARDENING.md)
 are satisfied and an operator has approved a release.
 

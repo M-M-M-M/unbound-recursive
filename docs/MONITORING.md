@@ -73,3 +73,48 @@ filtering is still the primary defense.
 
 References: https://github.com/influxdata/telegraf/tree/master/plugins/inputs/unbound
 and https://docs.docker.com/engine/logging/drivers/local/.
+
+## Preferred stats-only file handoff (dev9, qualification pending)
+
+An approved operator collects the local `stats_noreset` output with the
+existing administrative mechanism and passes it to `monitoring/export-stats.pl`.
+Telegraf reads only the atomically published Influx line-protocol file, never
+Docker or the Unbound administration socket. The exporter allows a fixed list
+of aggregate numerical fields, refuses malformed/missing required fields and
+leaves the last snapshot unchanged on failure. It does not collect IP addresses,
+queries or secrets. It publishes a source timestamp so re-reading a stale file
+must not falsely indicate fresh samples. Use a dedicated protected setgid
+metrics directory (operator write, Telegraf group read/traverse only; mode 2750
+with the approved group). Never allow Telegraf to replace the file or directory.
+
+Example for an authorized operator (run from the reviewed deployment directory):
+
+```sh
+# Use a protected temporary file and require successful Docker command first.
+umask 077
+tmp=$(mktemp)
+if docker compose -f compose.yaml exec -T unbound unbound-control \
+    -c /etc/unbound/recursive.conf stats_noreset > "$tmp"; then
+  perl monitoring/export-stats.pl /path/to/approved/metrics/unbound.lp < "$tmp"
+fi
+rm -f "$tmp"
+```
+
+Use the approved job runner with locking, failure alerts and cleanup trap for
+scheduled execution (suggest 30 s; measure before enabling). No scheduler or
+privileged access is installed by this project. A failure of collection must be
+reported; retain the prior snapshot and alert on stale/missing data. Install
+`monitoring/telegraf-file.conf` with the actual local path, and import
+`monitoring/grafana-snapshot-flux.json`. The separate `unbound_snapshot`
+measurement avoids field type collisions with the native plugin. Fields are
+exported as line-protocol floats; validate precision and counter behavior at
+expected scale. Use one collection identity/host per instance. Never run both
+collectors without explicit dashboard/alert separation.
+
+Qualification: run `prove -v tests/export-stats.t`; then on a test Linux host
+collect real output, inspect line protocol and verify `telegraf --test` with
+an isolated config as the actual Telegraf user. Verify file mode and denied
+write/socket/Docker access, field names, timestamp handling, and InfluxDB bucket
+retention. Import the dashboard, generate queries, observe rates and latency,
+stop/restart the resolver, test stale timestamps and alerts. No Grafana or
+Telegraf daemon was available in the dev9 preparation environment.

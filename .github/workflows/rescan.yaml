@@ -3,10 +3,36 @@ on:
   schedule:
     - cron: '47 2 * * *'
   workflow_dispatch:
+    inputs:
+      digest:
+        description: Optional approved deployed manifest digest (default resolves latest once)
+        required: false
+        type: string
 permissions:
   contents: read
 jobs:
+  resolve:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      digest: ${{ steps.resolve.outputs.digest }}
+    steps:
+      - id: resolve
+        shell: bash
+        env:
+          REQUESTED: ${{ inputs.digest }}
+        run: |
+          set -euo pipefail
+          repo="ghcr.io/${GITHUB_REPOSITORY,,}"
+          digest="$REQUESTED"
+          if [[ -z "$digest" ]]; then
+            digest=$(docker buildx imagetools inspect "$repo:latest" --format '{{json .Manifest}}' | jq -er '.digest')
+          fi
+          [[ "$digest" =~ ^sha256:[a-f0-9]{64}$ ]]
+          echo "digest=$digest" >> "$GITHUB_OUTPUT"
+          printf 'Scanning immutable manifest: %s\n' "$digest" >> "$GITHUB_STEP_SUMMARY"
   rescan:
+    needs: resolve
     strategy:
       fail-fast: false
       matrix:
@@ -21,16 +47,18 @@ jobs:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           persist-credentials: false
-      - name: Pull current public image and record digest
+      - name: Pull resolved immutable image and record digest
         shell: bash
         env:
           ARCH: ${{ matrix.arch }}
+          DIGEST: ${{ needs.resolve.outputs.digest }}
         run: |
           set -euo pipefail
-          ref="ghcr.io/${GITHUB_REPOSITORY,,}:latest"
+          ref="ghcr.io/${GITHUB_REPOSITORY,,}@$DIGEST"
           docker pull --platform "linux/$ARCH" "$ref"
           test "$(docker image inspect "$ref" --format '{{.Os}}/{{.Architecture}}')" = "linux/$ARCH"
-          docker image inspect "$ref" --format '{{json .RepoDigests}} {{.Id}}' > scanned-image.txt
+          printf '%s\n' "$ref" > scanned-image.txt
+          docker image inspect "$ref" --format '{{json .RepoDigests}} {{.Id}}' >> scanned-image.txt
           docker tag "$ref" unbound-recursive:rescan
       - name: Trivy full vulnerability report
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0

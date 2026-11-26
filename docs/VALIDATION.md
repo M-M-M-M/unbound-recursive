@@ -188,3 +188,23 @@ scanner DB or Debian package version may change the findings independently.
 The four blockers are expected to disappear if their packages are absent;
 new HIGH/CRITICAL findings remain subject to the existing policy. Signing,
 attestations, promotion and Linux host qualification remain unverified.
+
+## dev8 evidence and dev9 changes
+
+Owner-provided dev8 CI logs (run 123689349415) show successful native builds,
+integration/recovery, Trivy and SBOM on both architectures. Per image: 324
+findings, 148 IDs, 76 HIGH, zero CRITICAL/blockers or exceptions. Signed
+manifest published and promoted, digest
+`sha256:1f174bcd92333948337b359a0773aaefbff1e50eeddc6c22a6003ac356562e81`.
+Owner verified Cosign from macOS. ARM64 image size measured locally: 152544990
+bytes before LDNS change, 142298403 after. Dev8 CI used the same Debian index
+digest on both platforms; this is now pinned. See [triage](VULNERABILITY-REVIEW.md).
+
+Dev9 offline checks: `make test-unit` passed 141 assertions, including 21
+mocked deployment checks and 12 stats export checks. No real Docker, Cosign,
+GitHub CLI, Telegraf or Grafana execution was possible in the preparation
+environment. Run the new [upgrade qualification](UPGRADING.md) in an isolated
+instance and [monitoring qualification](MONITORING.md#preferred-stats-only-file-handoff-dev9-qualification-pending).
+Manually dispatch the revised re-scan workflow with the dev8 digest, then
+without input, confirm matching immutable manifest in both artifact records.
+Daily schedule, dev9 publication and real Linux host qualification remain pending.

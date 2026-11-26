@@ -32,8 +32,9 @@ previous `latest` unchanged (except a failure during the final promotion itself,
 which requires checking the resulting tag). PRs cannot publish. No permanent
 signing key or external registry credential is necessary.
 
-The separate daily re-scan workflow checks the currently published public
-`latest` on each platform without pushing anything. A failed scan is an alert,
+The separate daily re-scan workflow resolves the current public `latest` once
+and scans that immutable digest on both platforms without pushing anything.
+Manual workflow dispatch optionally accepts an exact deployed manifest digest. A failed scan is an alert,
 not automatic removal or rollback. Configure GitHub notifications and monitor
 actual deployed digests separately; `latest` is not necessarily what runs in
 production. Each report records the image ID and registry digest inspected.
@@ -77,9 +78,16 @@ review installer verification and future security advisories. References:
 [Trivy action](https://github.com/aquasecurity/trivy-action/releases/tag/v0.36.0),
 [Cosign installer](https://github.com/sigstore/cosign-installer/releases/tag/v4.1.3),
 [GitHub attest](https://github.com/actions/attest/releases/tag/v4.2.2).
-The base image tag `debian:trixie-slim` and current Debian package repositories
-remain intentionally refreshed in this development build. A reviewed base digest
-and controlled refresh procedure are still mandatory release gates. Provenance
+The Dockerfile pins `debian:trixie-slim` to the shared index digest
+`sha256:8aa5a7bf5a1955bddbe7d74fcdd0b91ab30e74362a8b73af672b0481b35b44a0`,
+observed in both successful dev8 build logs. Dependabot Docker checks weekly;
+review digest-update PRs, upstream changes, both native builds and CVE reports
+before merging. Daily no-cache builds still upgrade/install current signed
+Debian packages; this is not a fully reproducible package snapshot. Do not
+automatically replace an approved base pin. Provenance
 records the workflow and commit; it does not establish bit-for-bit reproducibility
-or certify source safety. End-to-end signing, registry attestation discovery and
-verification have not been exercised in the archive preparation environment.
+or certify source safety. Dev8 end-to-end signing and promotion passed in CI; the operator independently
+verified Cosign from macOS. New dev9 `deploy.pl verify` additionally enforces
+provenance and both platform SBOM attestations. Its live execution and the
+revised re-scan still need qualification. See [verified upgrades](UPGRADING.md)
+and [vulnerability triage](VULNERABILITY-REVIEW.md).

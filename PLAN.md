@@ -27,3 +27,9 @@ and [TODO](TODO.md) for acceptance and prioritized work.
   No replacement stack without a justified requirement and approval.
 - Development snapshots may be built and published for isolated testing; neither
   a green development workflow nor a mutable tag is a production authorization.
+- Prefer a stats-only file handoff to Telegraf over sharing Unbound's
+  administrative control socket. Keep timestamp/retention and failure alerts
+  explicit; collect client-level data only in a later bounded frontend.
+- Digest updates are initiated by the operator on each host. The dev9 helper
+  verifies signatures/attestations, records a local journal, backs up DNSSEC
+  and tests before accepting; configuration/state migrations require review.

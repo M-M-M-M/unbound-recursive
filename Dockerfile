@@ -1,4 +1,4 @@
-FROM debian:trixie-slim
+FROM debian:trixie-slim@sha256:8aa5a7bf5a1955bddbe7d74fcdd0b91ab30e74362a8b73af672b0481b35b44a0
 LABEL org.opencontainers.image.source="https://github.com/M-M-M-M/unbound-recursive" \
       org.opencontainers.image.description="Private recursive DNS resolver with DNSSEC" \
       org.opencontainers.image.licenses="MIT"

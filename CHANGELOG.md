@@ -7,6 +7,27 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 
 ## [Unreleased]
 
+### Added (dev9)
+
+- Operator-only core Perl digest verification, explicit update and rollback;
+  verify Cosign, index provenance and both platform SBOMs before any update.
+  Back up stopped DNSSEC state, retain a local journal, test the candidate and
+  attempt automatic image-only rollback on failure. Same default profile and
+  compatible state schema only; no unattended deployment or automatic purge.
+- Stats-only timestamped file exporter, optional Telegraf file input and
+  separate Flux dashboard; no administrative socket or Docker access for Telegraf.
+- TAP regressions for both tools; update/recovery and vulnerability review docs.
+
+### Changed (dev9)
+
+- Pin Debian to the multiarch base digest recorded in successful dev8 CI;
+  Dependabot continues to propose controlled refreshes.
+- Resolve the daily re-scan digest once across both architectures; allow manual
+  re-scan of an approved deployed digest.
+- Record dev8 CI publication, no blocking CVEs, operator Cosign verification
+  and ARM64 image size reduction. Preserve CVE policy and empty exception list.
+
+
 ### Changed (dev8)
 
 - Replace `bind9-dnsutils` with Debian `ldnsutils` (`drill`) to reduce
