@@ -28,7 +28,7 @@ backup-state:
 restore-state:
 	UNBOUND_IMAGE=unbound-recursive:dev ./scripts/state.sh restore
 test-unit:
-	RUN_DOCKER_TESTS=0 prove -v tests/vulnerability-gate.t tests/state-mock.t tests/confirmation.t tests/healthcheck.t tests/package-policy.t tests/deploy.t tests/export-stats.t tests/collect-stats.t tests/benchmark.t tests/benchmark-lab.t tests/benchmark-profiles.t tests/benchmark-identity.t tests/benchmark-async.t tests/benchmark-resources.t tests/monitoring-alert-config.t tests/benchmark-metrics.t tests/fixture-healthcheck.t tests/local-docker.t tests/command-runner.t tests/soak-verdict.t
+	RUN_DOCKER_TESTS=0 prove -v tests/vulnerability-gate.t tests/state-mock.t tests/confirmation.t tests/healthcheck.t tests/package-policy.t tests/deploy.t tests/export-stats.t tests/collect-stats.t tests/benchmark.t tests/benchmark-lab.t tests/benchmark-profiles.t tests/benchmark-identity.t tests/benchmark-async.t tests/benchmark-resources.t tests/monitoring-alert-config.t tests/benchmark-metrics.t tests/fixture-healthcheck.t tests/local-docker.t tests/command-runner.t tests/soak-verdict.t tests/dnssec-reply.t
 test-state:
 	RUN_DOCKER_TESTS=1 prove -v tests/state-live.t
 test-state-bind:
@@ -43,8 +43,8 @@ digest:
 test-monitoring:
 	RUN_MONITORING_LIVE=1 prove -v tests/monitoring-live.t
 
-.PHONY: monitoring-start monitoring-open monitoring-traffic monitoring-status monitoring-logs monitoring-usage monitoring-retention monitoring-alerts monitoring-stop monitoring-clean
-monitoring-start monitoring-open monitoring-traffic monitoring-status monitoring-logs monitoring-usage monitoring-retention monitoring-alerts monitoring-stop monitoring-clean:
+.PHONY: monitoring-start monitoring-open monitoring-traffic monitoring-status monitoring-logs monitoring-usage monitoring-measure monitoring-retention monitoring-alerts monitoring-stop monitoring-clean
+monitoring-start monitoring-open monitoring-traffic monitoring-status monitoring-logs monitoring-usage monitoring-measure monitoring-retention monitoring-alerts monitoring-stop monitoring-clean:
 	perl monitoring/labctl.pl $(@:monitoring-%=%)
 
 .PHONY: benchmark test-benchmark
@@ -73,3 +73,9 @@ test-monitoring-operations:
 .PHONY: test-monitoring-retention
 test-monitoring-retention:
 	RUN_MONITORING_LIVE=1 RUN_MONITORING_OPERATIONS=retention prove -v tests/monitoring-live.t
+
+.PHONY: audit-runtime test-dnssec
+audit-runtime:
+	perl tests/runtime-audit.pl
+test-dnssec:
+	RUN_DNSSEC_LIVE=1 prove -v tests/dnssec-live.t

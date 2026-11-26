@@ -7,16 +7,16 @@ Once action is done, remove the priority number.
 
 ## 0.1.0 — security-first release gates
 
-- [ ] Review all remaining HIGH CVEs and reachable code; LDNS CVE-2026-10846 initial triage recorded; no exceptions. 0️⃣
+- [ ] Review runtime audit on both architectures and approve risk dispositions for the 25 HIGH IDs triaged in dev17; retain drill and guard; no exceptions. 0️⃣
 - [ ] Review full host hardening reference, pinned Actions and transitive installers; qualify pinned base refresh and dev10 build. 1️⃣
-- [ ] Retain current both-platform re-scan reports and confirm scheduled run; dev13 manual re-scan reported passed. 2️⃣
+- [ ] Retain approved dev17 scan and runtime-audit artifacts; dev16.1 both-platform re-scan reports reviewed, scheduled run confirmation remains. 2️⃣
 - [ ] Retain dev12 operator qualification evidence and qualify on Linux amd64 production-like host. 3️⃣
 - [ ] Verify non-root effective privileges, protected deployment paths, SELinux, resource limits, firewall and Docker routes. 4️⃣
 - [ ] Complete production-like Linux numeric ownership/SELinux, trust anchor rollover and migration; dev12 local volume/bind recovery and purge reported successful. 5️⃣
 - [ ] Probe IPv4/IPv6 exposure and unauthorized isolated lab clients; check source-IP NAT behavior. 6️⃣
 - [ ] Audit installed package inventory and qualify signed deployment on isolated production-like host; dev12 manual CI workflow reported passed. 7️⃣
-- [ ] Dev16 corrected alert firing/recovery and retention fixture passed locally; qualify dev16.1 regression, real alert delivery, per-host absence, daily storage growth and deployment-specific permissions; dev13 CI and M1 dashboard reported successful. 8️⃣
-- [ ] Dev16 corrected 70 min full coverage, plateau and recovery observed; 1k phase passed, 10k insufficient emission (97.61%). Qualify dev16.1 independent 10k phase and 24 h, repeat native AMD64; add deterministic DNSSEC-negative fixture. 9️⃣
+- [ ] Dev16.1 72 operations assertions passed locally; qualify real notification delivery, per-host absence, daily storage growth and deployment-specific permissions using dev17 runbook. 8️⃣
+- [ ] Dev16.1 independent 10k phase PASS and both native CI comparisons reviewed. Run 24 h endurance, deterministic DNSSEC fixture on both platforms and host trust-anchor rollover/migration. 9️⃣
 - [ ] Record all acceptance evidence and approve release before any production deployment. 🔟
 
 ## Later milestones
@@ -27,6 +27,8 @@ Once action is done, remove the priority number.
 - [ ] 1.0.0: full operational and recovery qualification for supported deployment profiles. #️⃣
 
 ## Completed
+
+- [x] Dev16.1 operator: independent 10k soak PASS (5,993,142 valid, zero failed, 40/40 samples), 72 monitoring assertions, native comparison and re-scan successful. Both CI comparison and Trivy archives reviewed in dev17; 25 distinct HIGH IDs triaged, not formally accepted. Dev17 audit and DNSSEC fixture implemented; live gates pending.
 
 - [x] Corrected dev16 local evidence: 362 unit, 72 monitoring operations assertions, 120 s sampling smoke, then 70 min full resource coverage and 9,432,913 valid answers, zero failed sends. 10k phase underdriven. Dev16.1 includes command-runner regression, detailed emission diagnostics, independent profiles and status classification; live validation pending.
 

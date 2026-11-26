@@ -75,3 +75,13 @@ the 24-hour test, and review its skip diagnostics. Do not repeat the already
 qualified 60-minute phase solely because the second phase was under-driven.
 The corrected dev16 monitoring operations passed; external notifications,
 daily storage and host/security evidence remain pending.
+
+
+## dev17 security-first freeze
+
+Keep official Debian Unbound and LDNS, unchanged runtime configuration and CVE
+policy. Record supplied dev16.1 native performance and scan evidence, review
+25 HIGH IDs against actual package/file/runtime evidence, qualify isolated
+DNSSEC rejection before publication, and keep remaining host/notification/day
+acceptance gates explicit. See docs/CURRENT-SECURITY-REVIEW.md and
+ docs/RELEASE-CHECKLIST.md. No production deployment or release approval.

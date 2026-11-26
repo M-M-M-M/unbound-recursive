@@ -126,3 +126,54 @@ Both coverage gates complete; zero sampler diagnostics and clock anomalies;
 observed container health normal. The plateau is encouraging, not proof of
 absence of leaks; the 24-hour test remains open. Isolated phases in dev16.1
 start a new lab, not a continuation of the earlier warmed 70-minute run.
+
+## dev16.1 native CI comparison — 2026-11-26
+
+Operator supplied both native comparison archives, Docker 28.0.4 on Linux.
+These are local CI builds, not the exact published image scanned by Trivy.
+Different hosted machines and scheduling prevent a controlled CPU architecture
+comparison. All eight reports recorded recovery success; both soak-check
+phases passed. No failure among sent queries.
+
+| Architecture | Requested | Sent | Valid | Failed | Resolver bytes | Client bytes |
+|---|---:|---:|---:|---:|---:|---:|
+| amd64 | 342,048 | 338,903 | 338,903 | 0 | 116,553,337 | 132,133,547 |
+| arm64 | 342,048 | 329,917 | 329,917 | 0 | 142,289,905 | 156,299,106 |
+
+### Baseline
+
+| Case | AMD64 valid q/s | AMD64 p99 ms | ARM64 valid q/s | ARM64 p99 ms |
+|---|---:|---:|---:|---:|
+| udp-warm | 999.99 | 0.256 | 999.98 | 0.297 |
+| udp-cold | 999.96 | 0.395 | 999.98 | 0.481 |
+| tcp-warm | 999.81 | 0.398 | 999.98 | 0.505 |
+| tcp-cold | 889.65 | 24.637 | 984.62 | 5.308 |
+| tcp-persistent | 999.53 | 0.167 | 999.98 | 0.192 |
+
+### Stress
+
+| Case | AMD64 valid q/s | AMD64 p99 ms | ARM64 valid q/s | ARM64 p99 ms |
+|---|---:|---:|---:|---:|
+| udp-stress-500 | 499.30 | 0.451 | 499.53 | 0.563 |
+| udp-stress-1000 | 998.39 | 0.424 | 998.84 | 0.518 |
+| udp-stress-2500 | 2493.69 | 0.541 | 2497.24 | 0.582 |
+| udp-stress-5000 | 4961.58 | 0.807 | 4993.83 | 0.973 |
+| udp-stress-10000 | 9804.14 | 2.112 | 8772.81 | 2.708 |
+| udp-stress-30 | 999.45 | 0.379 | 999.46 | 0.520 |
+| udp-stress-60 | 999.81 | 0.395 | 999.82 | 0.499 |
+
+At the 10k stress step AMD64 emitted 98,207/100,000 and ARM64
+88,031/100,000. The exploratory stress gate does not require 99% offered load;
+do not describe these as strict 10k soak passes. TCP cold creates a new
+connection per request; the slower cases do not imply DNS losses.
+
+## dev16.1 independent 10k soak — operator report
+
+600 seconds on macOS ARM64, isolated synthetic cold UDP. 5,993,142 of
+6,000,000 scheduled queries sent; all successful, 99.8857% emission,
+9,988.5 valid q/s, 6,858 expired slots, zero pending/ID/tail omissions.
+40/40 resource samples and no sampler diagnostics. PASS. The operator
+also reported 72/72 monitoring operations tests and successful native
+comparison and re-scan workflows. No 24-hour endurance or real Internet
+capacity claim. The independent phase has a different initial cache state
+from the combined 70-minute run.

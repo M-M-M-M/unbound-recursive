@@ -18,8 +18,8 @@ use Time::HiRes qw(sleep);
 my $root = abs_path("$RealBin/..");
 my $dir = "$root/.monitoring-lab";
 my ($op,$report_path) = @ARGV;
-(@ARGV == 1 && $op =~ /\A(?:start|open|traffic|status|logs|usage|retention|alerts|stop|clean)\z/ || @ARGV == 2 && $op eq 'benchmark-import')
-    or die "usage: labctl.pl start|open|traffic|status|logs|usage|retention|alerts|stop|clean|benchmark-import REPORT\n";
+(@ARGV == 1 && $op =~ /\A(?:start|open|traffic|status|logs|usage|measure|retention|alerts|stop|clean)\z/ || @ARGV == 2 && $op eq 'benchmark-import')
+    or die "usage: labctl.pl start|open|traffic|status|logs|usage|measure|retention|alerts|stop|clean|benchmark-import REPORT\n";
 $< != 0 or die "run as a non-root Docker operator\n";
 require_local_docker();
 my ($benchmark_lp,$benchmark_run);
@@ -32,7 +32,7 @@ if ($op eq 'benchmark-import') {
 }
 umask 077;
 sysopen(my $lock, "$dir.lock", O_CREAT | O_RDWR | O_NOFOLLOW, 0600) or die "open lab lock: $!\n";
-if ($op !~ /\A(?:open|status|logs|usage|retention)\z/) {
+if ($op !~ /\A(?:open|status|logs|usage|measure|retention)\z/) {
     flock($lock, LOCK_EX | LOCK_NB) or die "lab busy; stop monitoring-traffic with Ctrl+C first\n";
 }
 sub read_file {
@@ -138,6 +138,17 @@ if ($op eq 'start') {
 } elsif ($op eq 'status') { compose('ps'); }
 elsif ($op eq 'logs') { compose('logs','--tail=50'); }
 elsif ($op eq 'usage') { compose('exec','-T','influxdb','du','-sk','/var/lib/influxdb2','/etc/influxdb2'); }
+elsif ($op eq 'measure') {
+    # One field and host gives one row per distinct stored source timestamp.
+    # The query is read-only and may run alongside the foreground collector.
+    require POSIX;
+    print "UTC: ", POSIX::strftime('%Y-%m-%dT%H:%M:%SZ',gmtime), "\n";
+    compose('exec','-T','influxdb','du','-sk','/var/lib/influxdb2','/etc/influxdb2');
+    compose('exec','-T','influxdb','influx','bucket','list','--org','lab','--name','resolver-lab');
+    my $query = 'from(bucket: "resolver-lab") |> range(start: -24h) |> filter(fn: (r) => r._measurement == "unbound_snapshot" and r._field == "total_num_queries" and r.host == "resolver-lab") |> group() |> count(column: "_value")';
+    print "Stored source samples in last 24h (Flux CSV):\n";
+    compose('exec','-T','influxdb','influx','query','--host','http://localhost:8086','--org','lab','--raw',$query);
+}
 elsif ($op eq 'retention') { compose('exec','-T','influxdb','influx','bucket','list','--org','lab','--name','resolver-lab'); }
 elsif ($op eq 'stop') { compose('stop'); }
 elsif ($op eq 'clean') {

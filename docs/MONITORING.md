@@ -354,3 +354,37 @@ actual alert firing/recovery and logical shard expiry, with successful
 cleanup. The before/after storage snapshots (416/428 KiB for the data
 directory) are not a daily-growth measurement. Notification delivery,
 No Data/Error behavior and physical storage reclamation remain open.
+
+## dev17: delivery and daily storage acceptance
+
+The operator reported dev16.1's 72/72 operations checks passed. This proves
+rule firing/recovery and logical fixture expiry, not actual delivery to a
+contact point. Keep all destinations and credentials out of Git and reports.
+Use a fresh disposable lab (not a production dashboard). Run
+`make monitoring-start`, `make monitoring-alerts`, `make monitoring-open`,
+then `make monitoring-traffic` in the foreground. In Grafana Alerting,
+create an approved test contact point, enable resolved messages and route
+only the lab `scope=resolver-lab` label to it. Verify the contact-point test
+message, then stop traffic with Ctrl+C, wait for the real firing message,
+resume traffic and record the actual resolved message. A successful test
+message alone is insufficient. Remove the route/contact point afterward.
+Separately exercise No Data and Error with a temporary rule/datasource;
+never deliberately interrupt a production datasource. External delivery
+cannot be qualified without an operator-approved destination.
+
+For storage, use a fresh lab without imported benchmark data. Run
+`make monitoring-measure` once the first sample is visible and again after
+24 hours of normal `make monitoring-traffic` (on macOS use `caffeinate -is`).
+The command records UTC time, data and config KiB, actual retention metadata
+and count of one known field for the single lab source over the last 24 h.
+It is read-only and can run while the foreground collector is active.
+Keep both outputs in local protected evidence (not in Git). Record actual
+elapsed time and any pauses, sample count, data/config delta and repeat a
+measurement after normal compaction. The rolling count is not total samples
+since creation when retention has already removed data. The nominal five
+second sleep excludes query and collection overhead, so measure actual
+cadence. Do not extrapolate daily growth from the four-point fixture or
+interpret a negative delta as no disk use. The 24-hour DNS benchmark is a
+separate lab and does not populate this bucket automatically. Avoid running
+both simultaneously when evaluating strict load performance. Stop traffic
+before stopping or cleaning the disposable lab.

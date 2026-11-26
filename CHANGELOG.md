@@ -7,6 +7,21 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 
 ## [Unreleased]
 
+### Added (dev17)
+
+- Record the 26 November both-platform scan inventory and individual HIGH
+  triage, package dependency/file evidence, LDNS decision and native performance
+  comparisons; retain the existing CVE gate and excluded-package guard.
+- Audit installed dependency fields, actual dynamic linkage, build options,
+  effective configuration and simulated LDNS removal in a private local image.
+- Add isolated signed/tampered DNSSEC fixture, positive/negative/CD controls,
+  response-parser regressions and native build qualification before publication.
+- Add read-only lab storage/source-count snapshots, notification acceptance
+  instructions and representative Linux host runbook; actual delivery and
+  long-run storage measurements remain operator gates.
+- No production image recipe, resolver configuration, deployment or rate-limit
+  changes; no new runtime packages or external notification destinations.
+
 ### Fixed (dev16.1)
 
 - Scope File::Temp command capture handles to each invocation; regressions

@@ -376,3 +376,24 @@ are tested offline; UDP loopback with deliberate loss remains tested.
 Docker is unavailable here: the new CLI profiles, sampler under actual
 Docker load, retention-only path and revised live diagnostics are pending
 operator validation. No current security scan or CI run was performed.
+
+## dev17 security and DNSSEC fixture
+
+Prepared from dev16.1 archive (not a new Git export). Supplied dev16.1 native
+comparison and re-scan artifacts reviewed; see PERFORMANCE-EVIDENCE and
+CURRENT-SECURITY-REVIEW. No production recipe/configuration or CVE policy
+change. New `make audit-runtime` inspects the actual local image by immutable
+image ID in a read-only network-none container with private state tmpfs;
+APT removal is simulation only. New `make test-dnssec` generates fresh KSK
+and ZSK inside a network-none container, signs a local test zone, verifies
+it, changes one A record without re-signing and requires AD for intact data,
+SERVFAIL for altered data and a checking-disabled positive control. See
+https://unbound.docs.nlnetlabs.nl/en/latest/manpages/unbound.conf.html
+(auth-zone for-upstream with for-downstream disabled).
+No production trust anchor or fixture private key is retained. Parser tests
+exercise missing AD, wrong answer, truncation, nonempty SERVFAIL and absence
+of a response. Both new live commands are added to the native build job
+before publication. 392 offline assertions / 21 files passed on Linux Perl
+5.40.1; Docker and Unbound binaries unavailable here. The actual zone signing,
+validation, dependency inspection, monitoring measure command and new CI
+steps require operator execution; no assertion of live success is made.

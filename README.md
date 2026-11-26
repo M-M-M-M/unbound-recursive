@@ -4,7 +4,7 @@ A self-hosted recursive DNS resolver based on Unbound and Debian slim. No public
 recursive forwarder is used. The default deployment is private, not a public
 DNS service. DNSSEC authenticates signed DNS data; it does not encrypt recursion.
 
-**Status: 0.1.0-dev16.1 — command runner and endurance diagnostics, not production-qualified.**
+**Status: 0.1.0-dev17 — security evidence and offline DNSSEC qualification, not production-qualified.**
 Dev6 passed macOS M1 recovery tests; dev7 CI passed functional tests but was
 blocked by four CRITICAL findings. Dev8 replaces the in-container BIND DNS
 client with LDNS drill, retaining Debian upgrades, the CVE policy and empty
@@ -139,6 +139,8 @@ platform's `script` utility (BSD on macOS, util-linux on Linux). Perl and
 
 - `prove -v tests/*.t` or `make test-unit`: offline regression tests; live tests
   are skipped unless explicitly enabled.
+- `make test-dnssec`: isolated signed/tampered zone validation, no external DNS.
+- `make audit-runtime`: read-only package dependency and dynamic linkage evidence.
 - `make test`: integration tests against the running local test instance.
 - `make test-state`: opt-in destructive recovery in a disposable Compose project
   on a test Docker host; requires the local development image.
@@ -179,3 +181,8 @@ Use `make test-monitoring-operations` for the opt-in freshness alert and
 retention fixture test; `make test-monitoring-retention` skips the alert test.
 `make monitoring-alerts` installs a lab-only rule.
 See [release candidate checklist](docs/RELEASE-CHECKLIST.md) for open gates.
+
+See the [current security review](docs/CURRENT-SECURITY-REVIEW.md) for the dated
+25 HIGH CVE triage and why the Debian LDNS probe is retained. The [Linux
+host acceptance runbook](docs/LINUX-ACCEPTANCE.md) is required before deployment.
+`make monitoring-measure` collects read-only storage and source-count snapshots.

@@ -1,0 +1,23 @@
+use v5.26;
+use strict;
+use warnings;
+use Test::More;
+use FindBin;
+use lib "$FindBin::Bin/lib";
+use ProjectTest qw(run_command);
+my $script = "$FindBin::Bin/dnssec-reply.sh";
+my $good = ";; ->>HEADER<<- opcode: QUERY, rcode: NOERROR, id: 1\n;; flags: qr rd ra ad ; QUERY: 1\n;; ANSWER SECTION:\ngood.validation.test. 60 IN A 192.0.2.80\ngood.validation.test. 60 IN RRSIG A 8 3 60 1 1 1 validation.test. abc\n;; AUTHORITY SECTION:\n";
+my $bad = ";; ->>HEADER<<- opcode: QUERY, rcode: SERVFAIL, id: 2\n;; flags: qr rd ra ; QUERY: 1\n;; ANSWER SECTION:\n;; AUTHORITY SECTION:\n";
+sub check { my ($text,@args)=@_; return run_command(['/bin/sh',$script,@args],$text)->{code}; }
+my @positive=('NOERROR','yes','good.validation.test.','192.0.2.80');
+my @negative=('SERVFAIL','no','bad.validation.test.','-');
+is(check($good,@positive),0,'signed response with AD and exact A');
+isnt(check($good =~ s/ ra ad / ra /r,@positive),0,'missing AD refused');
+isnt(check($good =~ s/192\.0\.2\.80/192.0.2.81/r,@positive),0,'wrong A refused');
+isnt(check($good =~ s/qr rd/qr tc rd/r,@positive),0,'truncated response refused');
+is(check($bad,@negative),0,'SERVFAIL without AD or answer');
+isnt(check($bad =~ s/ ra / ra ad /r,@negative),0,'SERVFAIL with AD refused');
+isnt(check($bad =~ s/;; AUTHORITY SECTION:/bad.validation.test. 60 IN A 192.0.2.81\n;; AUTHORITY SECTION:/r,@negative),0,'SERVFAIL with answer refused');
+isnt(check('',@negative),0,'timeout or no reply is not SERVFAIL');
+is(check($good =~ s/ ra ad / ra cd /r,'NOERROR','no','good.validation.test.','192.0.2.80'),0,'CD control has no AD');
+done_testing;
