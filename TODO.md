@@ -15,8 +15,8 @@ Once action is done, remove the priority number.
 - [ ] Complete production-like Linux numeric ownership/SELinux, trust anchor rollover and migration; dev12 local volume/bind recovery and purge reported successful. 5️⃣
 - [ ] Probe IPv4/IPv6 exposure and unauthorized isolated lab clients; check source-IP NAT behavior. 6️⃣
 - [ ] Audit installed package inventory and qualify signed deployment on isolated production-like host; dev12 manual CI workflow reported passed. 7️⃣
-- [ ] Qualify real alert delivery, per-host absence, retention and deployment-specific permissions; dev13 CI and M1 dashboard reported successful. 8️⃣
-- [ ] Qualify dev15 asynchronous UDP and long soak profiles (60 min/10 min/24 h), memory plateau and recovery; repeat native AMD64; add deterministic DNSSEC-negative fixture. 9️⃣
+- [ ] Qualify dev16 alert state and retention fixture, real alert delivery, per-host absence, daily storage growth and deployment-specific permissions; dev13 CI and M1 dashboard reported successful. 8️⃣
+- [ ] Qualify dev16 watchdog and resource coverage; repeat 60 min/10 min with complete sampling, then 24 h, memory plateau and recovery; repeat native AMD64; add deterministic DNSSEC-negative fixture. 9️⃣
 - [ ] Record all acceptance evidence and approve release before any production deployment. 🔟
 
 ## Later milestones
@@ -27,6 +27,8 @@ Once action is done, remove the priority number.
 - [ ] 1.0.0: full operational and recovery qualification for supported deployment profiles. #️⃣
 
 ## Completed
+
+- [x] Dev15 operator logs and JSON: 321 unit and existing live suites passed; all three CI workflows reported successful. 9,529,369 valid soak answers, zero failed sends, both DNS gates met; resource sampling missing last 23 minutes of first phase. Dev16 implements coverage/interrupt safeguards and opt-in operations checks; live qualification pending.
 
 - [x] Dev14.2: operator logs show 408 passing assertions before randomized-name failure; corrected smoke 48/48 and all three workflows reported passed. Four supplied JSON reports reviewed; measured evidence in docs/PERFORMANCE-EVIDENCE.md. Dev15 implements the name fix and bounded async/soak profiles; live validation pending.
 

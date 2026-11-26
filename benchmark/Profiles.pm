@@ -25,10 +25,12 @@ sub profile_cases {
         for my $rate (500,1000,2500,5000,10000) {$add->("udp-stress-$rate",'udp','cold',$rate,10,16,'new');}
         $add->('udp-stress-30','udp','cold',1000,30,16,'new');
         $add->('udp-stress-60','udp','cold',1000,60,16,'new');
-    } elsif ($profile eq 'soak' || $profile eq 'soak-day') {
+    } elsif ($profile eq 'soak' || $profile eq 'soak-day' || $profile eq 'soak-check') {
         if ($profile eq 'soak') {
             $add->('udp-soak-1000','udp','cold',1000,3600,16,'async');
             $add->('udp-soak-10000','udp','cold',10000,600,16,'async');
+        } elsif ($profile eq 'soak-check') {
+            $add->('udp-soak-check','udp','cold',100,120,4,'async');
         } else {
             $add->('udp-soak-day','udp','cold',100,86400,4,'async');
         }
@@ -40,7 +42,7 @@ sub resolver_config {
     profile_cases($profile);
     for my $pair (['ip-ratelimit',100],['ratelimit',200]) {
         my ($key,$value)=@$pair;
-        my $replacement=($profile =~ /\A(?:baseline|stress|soak|soak-day)\z/)?0:$value;
+        my $replacement=($profile =~ /\A(?:baseline|stress|soak|soak-day|soak-check)\z/)?0:$value;
         my $n=($text =~ s/^([ \t]*\Q$key\E:[ \t]*)\Q$value\E[ \t]*$/$1$replacement/mg);
         $n==1 or die "unexpected lab $key configuration\n";
     }

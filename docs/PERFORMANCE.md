@@ -162,3 +162,52 @@ Higher experimental rates are deferred until stability is qualified.
 Long reports can be imported with the existing schema-3 Grafana importer.
 A 24-hour lab retention window may already exclude early points of a 24-hour
 run; JSON/CSV/JSONL remain the authoritative full evidence.
+
+## dev16: resource coverage and interruption gates
+
+Before a long run, qualify the new sampler in a two-minute isolated test:
+
+```sh
+make benchmark-soak-check
+```
+
+This targets 100 q/s for 120 s. It checks valid sent queries, no unexpected
+IP limiting, resource coverage, container health and recovery, not a p99 or
+precise load-generation acceptance threshold on shared CI runners. The
+performance workflow runs it on both architectures; its optional manual
+`comparison` input additionally runs baseline and stress, retaining reports.
+Do not treat shared-runner comparisons as controlled hardware comparisons.
+
+For long runs the sampler aims for 30 s between collection starts. Validated
+CPU/RAM records are appended to per-phase `*-stats.jsonl`. Combined Docker
+stats failures or invalid/missing rows are logged to `*.events.jsonl` and
+missing roles retried separately. An atomic `*.heartbeat.json` records the
+last usable sample for each role. A host-side watchdog checks approximately
+every second and aborts a long phase if either role has no usable sample for
+over 75 s or if it observes a host clock/scheduling interruption. Cleanup
+stops the isolated lab; completed phase JSON is atomically published and
+resource journals remain. No partial DNS histogram for an unfinished phase
+is promised. A host crash or forced kill can still lose buffered writes or
+leave a temporary lab; inspect before manually removing anything.
+
+For soak qualification require at least floor(90% of expected samples) for
+each role, no gap (including start/end) over 75 s, successful sampler exit,
+and no detected clock anomaly. The report's `resource_coverage` records these
+checks and the median memory in the third and fourth quarters of a phase,
+including their change. This is a trend indicator, not a leak detector.
+Runtime inspections at phase boundaries detect observed restart, OOM or exit
+for resolver, fixture and client. They do not prove no transient resource
+problem occurred between samples. If the watchdog fails, inspect `error.txt`,
+resource journals and retained Compose diagnostics; do not retry blindly.
+
+On macOS keep the lid open, the power supply connected, the system awake,
+and other intensive workloads stopped. For the day test:
+
+```sh
+caffeinate -is make benchmark-soak-day
+```
+
+Screen sleep is fine; system sleep is not. On Linux use an uninterrupted
+local Docker host. Clock gaps indicate an invalid timing/coverage condition,
+not definitive proof of system sleep. The dev15 partial sampling anomaly is
+recorded in [measured evidence](PERFORMANCE-EVIDENCE.md).

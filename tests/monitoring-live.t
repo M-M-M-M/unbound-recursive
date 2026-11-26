@@ -13,7 +13,11 @@ use lib "$FindBin::Bin/lib";
 use ProjectTest qw(run_command read_bytes write_bytes);
 use lib "$FindBin::Bin/../monitoring";
 use BenchmarkMetrics qw(report_lines);
+use lib "$FindBin::Bin/../lib";
+use LocalDocker qw(require_local_docker);
 plan skip_all => 'opt in with make test-monitoring' unless ($ENV{RUN_MONITORING_LIVE}//'') eq '1';
+my $operations=($ENV{RUN_MONITORING_OPERATIONS}//'') eq '1';
+require_local_docker() if $operations;
 $< != 0 or BAIL_OUT('run lab as non-root Docker operator');
 my $source=abs_path("$FindBin::Bin/..");
 my $dir=tempdir('unbound-monitor-XXXXXXXX', TMPDIR=>1, CLEANUP=>0);
@@ -76,6 +80,15 @@ my $success=eval {
     for my $file (qw(compose.yaml telegraf.conf provisioning/datasources/influx.yaml provisioning/dashboards/resolver.yaml)) {
         copy("$source/monitoring/lab/$file","$dir/$file") or die "copy $file: $!";
         chmod 0644,"$dir/$file" or die $!;
+    }
+    if ($operations) {
+        make_path("$dir/provisioning/alerting",{mode=>0755});
+        copy("$source/monitoring/lab/provisioning/alerts-freshness.json","$dir/provisioning/alerting/freshness.json") or die $!;
+        chmod 0644,"$dir/provisioning/alerting/freshness.json" or die $!;
+        # Accelerate retention only in this throwaway Compose project.
+        my $compose=read_bytes("$dir/compose.yaml");
+        $compose =~ s/(      DOCKER_INFLUXDB_INIT_MODE: setup\n)/$1      INFLUXD_STORAGE_RETENTION_CHECK_INTERVAL: 5s\n/ or die "retention test override missing\n";
+        write_bytes("$dir/compose.yaml",$compose);
     }
     # Provision an exact copy with lab-specific variable defaults.
     $dashboard->{templating}{list}[0]{current}={text=>'Resolver lab Flux',value=>'resolver-lab-flux'};
@@ -171,6 +184,58 @@ my $success=eval {
     is(latest_ns(),$third,'stopped resolver does not generate fresh source timestamps');
     my $stale=query($filter.' |> last() |> map(fn: (r) => ({_value: float(v: int(v: now()) - int(v: r._time)) / 1000000000.0}))');
     ok(defined($stale)&&$stale>=8,'freshness age increases after resolver stop');
+    if ($operations) {
+        my $rule_state=sub {
+            my $r=command([@curl,"$url/api/prometheus/grafana/api/v1/rules"],20);
+            return undef if $r->{code};
+            my $data=eval {decode_json($r->{stdout})};
+            return undef unless ref($data) eq 'HASH';
+            for my $group (@{$data->{data}{groups}//[]}) {
+                for my $rule (@{$group->{rules}//[]}) {
+                    next unless ($rule->{name}//'') eq 'Resolver lab source metrics stale';
+                    # Reject datasource error disguised as a firing freshness alert.
+                    return undef if ($rule->{health}//'') ne 'ok';
+                    return $rule->{state};
+                }
+            }
+            return undef;
+        };
+        my $provisioned_rule=poll(sub {my $r=command([@curl,"$url/api/v1/provisioning/alert-rules/resolver-lab-freshness"],20);$r->{code}?undef:$r->{stdout}},60);
+        ok(defined($provisioned_rule),'freshness alert provisioned') or die "alert provisioning missing\n";
+        # The resolver is stopped from the previous test. Wait for actual stale state.
+        ok(defined poll(sub {($rule_state->()//'') eq 'firing'?1:undef},250),'stale source raises firing state without query error') or die "freshness alert did not fire\n";
+        require_cmd([@compose,'up','-d','--wait','--wait-timeout','90','unbound'],'restart resolver for alert recovery');
+        my $recovered=collect();
+        ok(defined poll(sub {my $v=latest_ns();defined($v)&&$v eq $recovered?$v:undef},60),'recovery snapshot received');
+        ok(defined poll(sub {my $state=$rule_state->()//''; $state =~ /\A(?:normal|inactive)\z/?1:undef},90),'alert recovers with a fresh source');
+        my $du_before=require_cmd([@compose,'exec','-T','influxdb','du','-sk','/var/lib/influxdb2','/etc/influxdb2'],'storage size before retention test');
+        my $bucket='retention-fixture';
+        my $created=require_cmd([@compose,'exec','-T','influxdb','influx','bucket','create','--org','lab','--name',$bucket,'--retention','24h','--shard-group-duration','1h','--json'],'create isolated retention bucket');
+        my $b=decode_json($created);
+        $b=$b->[0] if ref($b) eq 'ARRAY' && @$b==1;
+        ref($b) eq 'HASH' or die "invalid fixture bucket response\n";
+        my $bid=$b->{id}//'';
+        $bid =~ /\A[0-9a-f]{16}\z/ or die "invalid fixture bucket ID\n";
+        my $now=int(time());
+        my $lp="retention_fixture,age=old value=1i ".($now-21600)."\nretention_fixture,age=recent value=2i $now\n";
+        my $w=run_command([@compose,'exec','-T','influxdb','influx','write','--org','lab','--bucket',$bucket,'--precision','s'],$lp,30);
+        is($w->{code},0,'write old and recent points before retention change') or die "fixture write failed\n";
+        my $retention_query=sub {
+            my ($age)=@_;
+            my $flux='from(bucket: "retention-fixture") |> range(start: -24h) |> filter(fn: (r) => r._measurement == "retention_fixture" and r.age == "'.$age.'") |> last() |> keep(columns: ["_value"])';
+            my $r=command([@compose,'exec','-T','influxdb','influx','query','--org','lab','--raw',$flux],30);
+            die "retention query failed\n" if $r->{code};
+            my @rows=grep {/,[12]\s*\z/} split /\n/,$r->{stdout};
+            return scalar @rows;
+        };
+        is($retention_query->('old'),1,'old point initially visible');
+        is($retention_query->('recent'),1,'recent point initially visible');
+        require_cmd([@compose,'exec','-T','influxdb','influx','bucket','update','--id',$bid,'--retention','2h','--shard-group-duration','1h'],'shorten only fixture bucket retention');
+        ok(defined poll(sub { $retention_query->('old')==0 && $retention_query->('recent')==1 ? 1:undef },120),'expired shard no longer queryable; recent point retained');
+        require_cmd([@compose,'exec','-T','influxdb','influx','bucket','delete','--id',$bid],'delete only retention fixture bucket');
+        my $du_after=require_cmd([@compose,'exec','-T','influxdb','du','-sk','/var/lib/influxdb2','/etc/influxdb2'],'storage size after retention test');
+        diag("Storage snapshots (KiB; not daily growth): before $du_before after $du_after");
+    }
     diag('Snapshot line bytes (uncompressed): '.length(read_bytes($snapshot)).'; sample count: '.(count_points()//'unknown'));
     1;
 };

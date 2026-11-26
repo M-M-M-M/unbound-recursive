@@ -341,3 +341,20 @@ profile and threshold checks are local Perl tests. Docker and live soak
 execution were unavailable in preparation. No commit, push or deployment
 was performed. The source is the supplied dev14.2 ZIP plus the operator's
 reported underscore normalization, not a newly synchronized checkout.
+
+## dev16
+
+Dev15 operator evidence is recorded in [performance evidence](PERFORMANCE-EVIDENCE.md).
+Dev16 adds a sampling check to native CI, a long-phase watchdog, resource coverage
+and container health gates, and optional monitoring operations tests. Run
+`make benchmark-soak-check` before endurance; `make test-monitoring-operations`
+is a separate opt-in real Docker check. See [release checklist](RELEASE-CHECKLIST.md).
+
+Preparation: `make test-unit` passed 362 assertions in 18 files on Linux
+(Perl 5.40.1). New offline regressions include the missing-tail scenario,
+per-role heartbeat expiry, clock anomaly, command cancellation, runtime
+inspection, alert configuration and sampling smoke profile. Docker is not
+available in preparation; no new live sampler, Compose, Grafana or InfluxDB
+validation was executed. No new CVE scan or live architecture comparison
+was performed. Source is the delivered dev15 archive, not a synchronized
+checkout. Review the diff against the real repository before committing.

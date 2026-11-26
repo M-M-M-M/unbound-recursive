@@ -1,0 +1,41 @@
+{
+  "apiVersion": 1,
+  "groups": [{
+    "orgId": 1,
+    "name": "resolver-lab-freshness",
+    "folder": "Resolver lab alerts",
+    "interval": "30s",
+    "rules": [{
+      "uid": "resolver-lab-freshness",
+      "title": "Resolver lab source metrics stale",
+      "condition": "C",
+      "data": [
+        {
+          "refId": "A",
+          "relativeTimeRange": {"from": 600, "to": 0},
+          "datasourceUid": "resolver-lab-flux",
+          "model": {
+            "refId": "A", "datasource": {"type": "influxdb", "uid": "resolver-lab-flux"},
+            "query": "from(bucket: \"resolver-lab\") |> range(start: -10m) |> filter(fn: (r) => r._measurement == \"unbound_snapshot\" and r._field == \"total_num_queries\" and r.host == \"resolver-lab\") |> last() |> map(fn: (r) => ({_time: now(), _value: float(v: int(v: now()) - int(v: r._time)) / 1000000000.0})) |> group()",
+            "intervalMs": 2000, "maxDataPoints": 300
+          }
+        },
+        {
+          "refId": "B", "relativeTimeRange": {"from": 0, "to": 0}, "datasourceUid": "__expr__",
+          "model": {"refId": "B", "datasource": {"type": "__expr__", "uid": "__expr__"}, "type": "reduce", "expression": "A", "reducer": "last", "intervalMs": 1000, "maxDataPoints": 43200}
+        },
+        {
+          "refId": "C", "relativeTimeRange": {"from": 0, "to": 0}, "datasourceUid": "__expr__",
+          "model": {"refId": "C", "datasource": {"type": "__expr__", "uid": "__expr__"}, "type": "threshold", "expression": "B", "intervalMs": 1000, "maxDataPoints": 43200,
+            "conditions": [{"evaluator": {"type": "gt", "params": [120]}, "operator": {"type": "and"}, "query": {"params": ["C"]}, "reducer": {"type": "last", "params": []}, "type": "query"}]}
+        }
+      ],
+      "noDataState": "Alerting",
+      "execErrState": "Alerting",
+      "for": "1m",
+      "isPaused": false,
+      "annotations": {"summary": "The disposable resolver lab has no recent source snapshot"},
+      "labels": {"scope": "resolver-lab", "severity": "warning"}
+    }]
+  }]
+}

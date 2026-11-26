@@ -1,6 +1,11 @@
 name: Qualify isolated DNS performance and network ACL
 on:
   workflow_dispatch:
+    inputs:
+      comparison:
+        description: Run baseline and stress on both native architectures
+        type: boolean
+        default: false
   push:
     branches: [main]
     paths:
@@ -12,6 +17,7 @@ on:
       - 'tests/benchmark-profiles.t'
       - 'tests/benchmark-identity.t'
       - 'tests/benchmark-async.t'
+      - 'tests/benchmark-resources.t'
       - 'tests/fixture-healthcheck.t'
       - 'tests/network-live.t'
       - 'tests/lib/**'
@@ -30,6 +36,7 @@ on:
       - 'tests/benchmark-profiles.t'
       - 'tests/benchmark-identity.t'
       - 'tests/benchmark-async.t'
+      - 'tests/benchmark-resources.t'
       - 'tests/fixture-healthcheck.t'
       - 'tests/network-live.t'
       - 'tests/lib/**'
@@ -57,6 +64,10 @@ jobs:
       - run: make build
       - run: make test-network
       - run: make test-benchmark
+      - run: make benchmark-soak-check
+      - name: Native comparison (opt-in)
+        if: github.event_name == 'workflow_dispatch' && inputs.comparison
+        run: make benchmark && make benchmark-stress
       - name: Retain smoke benchmark report
         if: always()
         uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0

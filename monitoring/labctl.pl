@@ -18,8 +18,8 @@ use Time::HiRes qw(sleep);
 my $root = abs_path("$RealBin/..");
 my $dir = "$root/.monitoring-lab";
 my ($op,$report_path) = @ARGV;
-(@ARGV == 1 && $op =~ /\A(?:start|open|traffic|status|logs|usage|retention|stop|clean)\z/ || @ARGV == 2 && $op eq 'benchmark-import')
-    or die "usage: labctl.pl start|open|traffic|status|logs|usage|retention|stop|clean|benchmark-import REPORT\n";
+(@ARGV == 1 && $op =~ /\A(?:start|open|traffic|status|logs|usage|retention|alerts|stop|clean)\z/ || @ARGV == 2 && $op eq 'benchmark-import')
+    or die "usage: labctl.pl start|open|traffic|status|logs|usage|retention|alerts|stop|clean|benchmark-import REPORT\n";
 $< != 0 or die "run as a non-root Docker operator\n";
 require_local_docker();
 my ($benchmark_lp,$benchmark_run);
@@ -126,6 +126,15 @@ if ($op eq 'start') {
     my $url=url(); $url =~ s{/d/unbound-recursive-snapshot\z}{/d/unbound-recursive-benchmark};
     print "Imported $benchmark_run. Grafana: $url (select benchmark time range; provisioning polls for changes).\n";
     run('open',$url) if $^O eq 'darwin';
+ } elsif ($op eq 'alerts') {
+    my $target="$dir/provisioning/alerting";
+    -d "$dir/provisioning" && !-l "$dir/provisioning" && !-l $target or die "unsafe alert provisioning directory\n";
+    make_path($target,{mode=>0755});
+    chmod 0755,$target or die "alert directory mode: $!\n";
+    !-l "$target/freshness.json" or die "unsafe alert file\n";
+    write_file("$target/freshness.json",read_file("$RealBin/lab/provisioning/alerts-freshness.json"),0644);
+    compose('restart','grafana');
+    print "Lab freshness alert installed; verify Alerting > Alert rules and configure a test contact point manually.\n";
 } elsif ($op eq 'status') { compose('ps'); }
 elsif ($op eq 'logs') { compose('logs','--tail=50'); }
 elsif ($op eq 'usage') { compose('exec','-T','influxdb','du','-sk','/var/lib/influxdb2','/etc/influxdb2'); }

@@ -6,7 +6,7 @@ use Exporter 'import';
 use File::Temp qw(tempfile);
 use IO::Select;
 use POSIX qw(:sys_wait_h setpgid);
-use Time::HiRes qw(time sleep);
+use Time::HiRes qw(time sleep clock_gettime CLOCK_MONOTONIC);
 our @EXPORT_OK = qw(read_bytes write_bytes run_command confirm_command);
 
 sub read_bytes {
@@ -27,7 +27,7 @@ sub write_bytes {
 
 # Capture child output without pipe deadlocks; no shell argument interpolation.
 sub run_command {
-    my ($argv, $input, $timeout) = @_;
+    my ($argv, $input, $timeout, $watchdog) = @_;
     $timeout //= 180;
     my ($in) = tempfile(UNLINK => 1);
     my ($out) = tempfile(UNLINK => 1);
@@ -43,19 +43,31 @@ sub run_command {
         open STDERR, '>&', $err or POSIX::_exit(126);
         exec { $argv->[0] } @$argv or POSIX::_exit(127);
     }
-    my $deadline = time + $timeout;
-    my $status;
-    while (1) {
-        my $result = waitpid($pid, WNOHANG);
-        if ($result == $pid) { $status = $?; last; }
-        die "waitpid: $!" if $result == -1;
-        if (time >= $deadline) {
+    my $deadline = clock_gettime(CLOCK_MONOTONIC) + $timeout;
+    my ($status,$reaped);
+    my $next_watchdog = clock_gettime(CLOCK_MONOTONIC);
+    my $ok = eval {
+        while (1) {
+            my $result = waitpid($pid, WNOHANG);
+            if ($result == $pid) { $status = $?; $reaped=1; last; }
+            if ($result == -1) { next if $!{EINTR}; die "waitpid: $!"; }
+            if ($watchdog && clock_gettime(CLOCK_MONOTONIC) >= $next_watchdog) {
+                $watchdog->();
+                $next_watchdog = clock_gettime(CLOCK_MONOTONIC) + 1;
+            }
+            die "command timed out: $argv->[0]" if clock_gettime(CLOCK_MONOTONIC) >= $deadline;
+            sleep 0.02;
+        }
+        1;
+    };
+    if (!$ok) {
+        my $error=$@ || 'command interrupted';
+        if (!$reaped) {
             kill 'KILL', -$pid;
             kill 'KILL', $pid;
             waitpid($pid, 0);
-            die "command timed out: $argv->[0]";
         }
-        sleep 0.02;
+        die $error;
     }
     seek $out, 0, 0 or die "seek output: $!";
     seek $err, 0, 0 or die "seek error: $!";

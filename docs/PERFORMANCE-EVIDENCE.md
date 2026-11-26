@@ -55,3 +55,41 @@ provided local logs showing 285 unit, 1 integration, 18 volume, 22 bind,
 57 monitoring and 25 network assertions passed. After normalizing the random
 Docker repository name the operator reported 48/48 smoke queries succeeded.
 Successful CI logs were not supplied for independent review.
+
+## dev15 — ARM64 endurance, 26 November 2026
+
+Source: operator-supplied schema-3 JSON for `ratelimit` and `soak`, and local
+TAP/terminal output. Both reports record ARM64, Docker Engine 29.9.3, the same
+142,298,403-byte resolver image and successful recovery. The operator reported
+all three GitHub workflows successful; their logs were not supplied.
+
+| Target / duration | Planned | Sent / valid | Goodput (q/s) | p99 (ms) | Max latency (ms) |
+|---|---:|---:|---:|---:|---:|
+| 1,000 / 60 min | 3,600,000 | 3,586,387 / 3,586,387 | 996.22 | 3.24 | 585.64 |
+| 10,000 / 10 min | 6,000,000 | 5,942,982 / 5,942,982 | 9,904.93 | 0.57 | 392.36 |
+
+9,529,369 valid answers, zero failed sends, zero timeouts, zero unmatched UDP
+replies and zero IP limiter increments. All sends were recorded as cache misses.
+70,631 scheduled queries were not sent. Both phases meet the dev15 throughput,
+reliability and percentile gates; they do not prove a global latency SLA.
+
+| Target | Resolver CPU max sample | Resolver RAM max sample | Samples per role | Last sample |
+|---|---:|---:|---:|---:|
+| 1,000 q/s | 26.88% | 128.6 MiB | 69 | 2,205.23 s |
+| 10,000 q/s | 57.90% | 131.0 MiB | 19 | 585.40 s |
+
+Resource samples suggest a plateau but do not cover the last 23 minutes of
+the first phase. The terminal progress messages continued through 3,542 s;
+therefore the sampler loop was not simply stopped at 2,205 s. Its old error
+handling silently ignored failed or unrecognized Docker stats responses.
+The exact failure cause is not established. Do not mark the memory/endurance
+resource gate as passed for that phase. No peak or absence-of-leak guarantee.
+Dev16 adds a sampling watchdog and coverage evidence; repeat with the new tool.
+
+At 200 q/s, async UDP sent all 2,000 scheduled queries, 1,128 succeeded and
+872 timed out; TCP sent 2,000, 1,134 succeeded and 866 peers closed. The
+respective IP limiter deltas were 872 and 866. At 50 q/s all 500 sends per
+protocol succeeded without limiting. This supports intended limiter behavior;
+individual packet attribution and a strict exact-100-q/s cap are not claimed.
+The prior 50-q/s TCP p99 was 11.212 ms in this run; latency objectives are
+qualified under the specific endurance workload, not assumed for every profile.

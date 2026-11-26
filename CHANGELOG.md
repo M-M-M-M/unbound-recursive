@@ -7,6 +7,18 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 
 ## [Unreleased]
 
+### Added (dev16)
+
+- Validate resource records, journal Docker stats errors, retry missing roles,
+  track atomic heartbeats and abort long phases on missing samples or timing gaps.
+- Require complete sampling coverage and observed container health for soak
+  gates; publish completed phases atomically and add a two-minute sampling check.
+- Add opt-in lab freshness provisioning, alert firing/recovery and retention
+  fixture tests; native comparison workflow input and release evidence checklist.
+- Record dev15 measured endurance and its incomplete resource evidence. Current
+  CVE reports, notification delivery, physical storage growth and host review
+  remain open. No production configuration or policy change.
+
 ### Added (dev15)
 
 - Normalize temporary Docker repository names, avoid removal of unbuilt images,

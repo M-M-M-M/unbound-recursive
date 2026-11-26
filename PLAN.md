@@ -59,3 +59,11 @@ and [TODO](TODO.md) for acceptance and prioritized work.
 - Treat 10,000 q/s as an isolated synthetic performance target, not a record or
   Internet recursion guarantee. Prioritize stability, recovery, actual alerts
   and release security gates; leave exploratory higher-rate tests optional.
+
+## dev16 release preparation
+
+Follow [the candidate evidence checklist](docs/RELEASE-CHECKLIST.md).
+The 10,000 q/s synthetic target is sufficient; prioritize complete resource
+coverage, 24-hour stability, actual monitoring qualification and security
+review over higher exploratory load. No tag until the remaining gates are
+reviewed and approved.

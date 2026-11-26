@@ -299,3 +299,40 @@ it is read-only, and does not prove physical deletion.
    evidence of alert delivery or retention expiry. Stop or clean the lab when
    done. Production uses per-expected-host alerts, separate scoped tokens and
    approved routing; single-lab rules do not certify those deployments.
+
+## dev16: opt-in alert and retention qualification
+
+`make monitoring-alerts` installs the freshness rule into the existing
+**disposable lab only**, restarts its Grafana, and does not create external
+contact points or overwrite notification policies. Stop `monitoring-traffic`
+first (it holds the lab lock), then restart it after provisioning. The rule
+uses the known `resolver-lab` series, source age >120 s, a 30 s evaluation
+interval and a 1-minute pending period. No Data and Error are set to Alerting.
+Existing contact routing in that lab is not changed. Review it before enabling
+a rule on a previously customized lab; no production instance is touched.
+Use Grafana Alerting > Alert rules to inspect state and configure a test contact
+point manually if appropriate. Rule evaluation does not establish notification
+delivery. See the [Grafana provisioning reference](https://grafana.com/docs/grafana/latest/alerting/set-up/provision-alerting-resources/file-provisioning/).
+
+```sh
+make test-monitoring-operations
+```
+
+This opt-in Docker test creates an independent temporary monitoring project,
+repeats the ordinary monitoring checks, provisions the rule, waits for a stale
+source to fire with healthy query evaluation, then verifies recovery after a
+fresh snapshot. It also creates a separate retention fixture bucket, confirms
+visibility of old and recent points, reduces retention only for that fixture,
+and checks that the expired point disappears while the recent one remains.
+The test shortens the enforcement-check interval to 5 s **only in its temporary
+Compose configuration**, uses a 1-hour shard duration, and records before/after
+storage snapshots. It never changes the regular lab or production bucket.
+See [InfluxDB retention](https://docs.influxdata.com/influxdb/v2/reference/internals/data-retention/)
+and [configuration](https://docs.influxdata.com/influxdb/v2/reference/config-options/).
+
+The `operations` manual input in the monitoring workflow runs this test.
+Provisioning, rule states and shard expiry require real Docker qualification;
+this is not evidence that email/webhook delivery, No Data/Error transitions,
+physical disk reclamation or daily storage growth have been verified. Use the
+dev15 manual checklist for those gates. A retained test bucket is removed
+with the temporary lab on cleanup, not through a production command.
