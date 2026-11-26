@@ -80,20 +80,59 @@ if [ "$1" = check ]; then
     if [ -n "$id" ]; then inspect_mount; fi
     exit 0
 fi
+# Identify the actual service mount, never guess a project-specific volume name.
+inspect_stopped() {
+    id=$(compose ps -a -q unbound)
+    case "$id" in ''|*[!a-fA-F0-9]*) fail 'exactly one existing unbound container is required';; esac
+    status=$(docker inspect --format '{{.State.Status}}' "$id")
+    case "$status" in exited|created) ;; *) fail 'stop the resolver first; never back up or restore live state';; esac
+    inspect_mount
+    users=$(docker ps -q --filter "volume=$source")
+    [ -z "$users" ] || fail 'a running container still uses the state mount'
+    image=$(docker inspect --format '{{.Image}}' "$id")
+    case "$image" in sha256:*) ;; *) fail 'expected an immutable local image ID';; esac
+}
+# Reuse the exact local image and only the inspected state mount. No pull or network.
+helper() {
+    docker run --rm -i --pull never --network none --user 10001:10001 \
+        --read-only --cap-drop ALL --security-opt no-new-privileges:true \
+        --memory 128m --cpus 0.5 --pids-limit 32 --no-healthcheck \
+        --log-driver none --mount "type=$kind,source=$source,target=/state$1" \
+        --entrypoint /bin/sh "$image" -eu -c "$2"
+}
 if [ "$1" = purge ]; then
     compose config --quiet
     compose ps -a
     configured=$(configured_mount) || fail 'cannot identify configured state'
     kind=$(printf '%s\n' "$configured" | sed -n '1p')
+    source=$(printf '%s\n' "$configured" | sed -n '2p')
     id=$(compose ps -a -q unbound)
     if [ -n "$id" ]; then inspect_mount; fi
+    approved_mount=$configured
     if [ "$kind" = bind ]; then
-        printf 'This removes containers and logs; bind-mounted host state and all named volumes are preserved.\n' >&2
+        check_bind_directory
+        printf 'This stops/removes containers and logs and deletes only %s/root.key. The bind directory, other files and named volumes are preserved.\n' "$source" >&2
         confirm 'Only proceed for the intended project after verifying backups.' PURGE
+        check_bind_directory
+        [ "$approved_mount" = "$(configured_mount)" ] || fail 'configured mount changed during confirmation'
+        id=$(compose ps -a -q unbound)
+        if [ -z "$id" ]; then
+            # A clean project may still contain its anchor. Create, never start.
+            compose create --no-build --pull never unbound
+        else
+            inspect_mount
+            compose stop unbound
+        fi
+        inspect_stopped
+        # No recursive deletion, no host shell path expansion, no symlink following.
+        helper '' '[ ! -L /state/root.key ] || { echo "refusing symbolic link root.key" >&2; exit 1; }; if [ -e /state/root.key ]; then [ -f /state/root.key ] || exit 1; rm -f -- /state/root.key; fi; [ ! -e /state/root.key ] && [ ! -L /state/root.key ]' || fail 'bind anchor purge failed; service is stopped, review before retry'
         compose down
     else
         printf 'This removes the containers, their logs and Compose-managed named volumes, including DNSSEC state.\n' >&2
         confirm 'Only proceed for the intended project after verifying backups.' PURGE
+        [ "$approved_mount" = "$(configured_mount)" ] || fail 'configured mount changed during confirmation'
+        id=$(compose ps -a -q unbound)
+        if [ -n "$id" ]; then inspect_mount; fi
         compose down --volumes
     fi
     exit 0
@@ -109,18 +148,6 @@ if [ "$1" = restore ]; then
     cp "$src/root.key.sha512" "$stage/root.key.sha512"
     [ "$(checksum "$stage/root.key")" = "$(cat "$stage/root.key.sha512")" ] || fail 'checksum mismatch'
 fi
-# Identify the actual service mount, never guess a project-specific volume name.
-inspect_stopped() {
-    id=$(compose ps -a -q unbound)
-    case "$id" in ''|*[!a-fA-F0-9]*) fail 'exactly one existing unbound container is required';; esac
-    status=$(docker inspect --format '{{.State.Status}}' "$id")
-    case "$status" in exited|created) ;; *) fail 'stop the resolver first; never back up or restore live state';; esac
-    inspect_mount
-    users=$(docker ps -q --filter "volume=$source")
-    [ -z "$users" ] || fail 'a running container still uses the state mount'
-    image=$(docker inspect --format '{{.Image}}' "$id")
-    case "$image" in sha256:*) ;; *) fail 'expected an immutable local image ID';; esac
-}
 id=$(compose ps -a -q unbound)
 if [ -z "$id" ]; then
     [ "$1" = restore ] || fail 'existing stopped container required for backup; do not clean it first'
@@ -140,14 +167,6 @@ else
         inspect_stopped
     fi
 fi
-# Reuse the exact local image and only the inspected state mount. No pull or network.
-helper() {
-    docker run --rm -i --pull never --network none --user 10001:10001 \
-        --read-only --cap-drop ALL --security-opt no-new-privileges:true \
-        --memory 128m --cpus 0.5 --pids-limit 32 --no-healthcheck \
-        --log-driver none --mount "type=$kind,source=$source,target=/state$1" \
-        --entrypoint /bin/sh "$image" -eu -c "$2"
-}
 if [ "$1" = backup ]; then
     dest=${BACKUP_DIR:-backups}
     mkdir -p "$dest"

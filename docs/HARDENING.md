@@ -61,3 +61,7 @@ Use only a dedicated protected host directory for `/state`, no other host bind
 mounts in the supported private profile. Review UID mapping, parent ownership
 and SELinux; check the actual mount source, preserve non-root execution, and
 qualify backup, recovery and migration before release. See [storage](STATE-STORAGE.md).
+
+Dev12 requires identical state-loss semantics for confirmed purge; the bind
+helper may delete only the regular root.key and never recursively remove host
+paths. Maintain a protected dedicated directory and no concurrent Docker operations.

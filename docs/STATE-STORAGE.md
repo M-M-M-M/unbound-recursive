@@ -92,14 +92,22 @@ only the selected mount and a SHA-512 checksum. Backups remain independent of
 | Operation | Named volume | Bind directory |
 | --- | --- | --- |
 | `stop` / `clean` | Retained | Retained |
-| confirmed `purge` | Compose-managed volumes removed | Directory and all contents retained; no volumes removed |
+| confirmed `purge` | Compose-managed volumes removed | Active `root.key` removed; directory, unrelated files and named volumes retained |
 | `restore-state` | Recreates stopped service if absent | Same, but operator must pre-create directory |
 
-No command automatically recursively deletes a host folder. For intentional
-bind-state reset, stop/clean the service, verify a trusted backup and use the
-approved host procedure to move the old state aside; pre-create an empty
-protected directory and restore or bootstrap only after review. A fresh anchor
-loses RFC 5011 history; see [impact](DEPLOYMENT.md#state-backup-and-restoration).
+In either mode, confirmed purge destroys the active DNSSEC state and removes
+containers and their logs. In bind mode the service is stopped first; a
+constrained non-root helper deletes only the regular `/state/root.key` file.
+A missing anchor is harmless, but a symlink, directory or deletion failure
+is refused. The path is checked against the effective Compose mount and
+running users of the mount are checked before deletion. After `clean`, purge
+can create a stopped container using the approved local image, without starting
+or pulling it. It then removes that container. The bind directory itself,
+other files, and independent backups are preserved. Never recursively delete
+a host folder. If a failure occurs after stopping, inspect the stopped service
+and state before retrying. Do not run concurrent manual Docker operations or
+change the configured directory during state operations. A fresh anchor loses
+RFC 5011 history; see [impact](DEPLOYMENT.md#state-backup-and-restoration).
 
 ## Qualification
 
@@ -112,4 +120,4 @@ returns ownership after cleanup. The actual resolver and backup helper remain
 non-root. Do not use this flag on a host without reviewing the lab path and UID
 mapping. On macOS try the unprivileged lab first; if the write probe fails,
 review Docker Desktop mapping before retrying with explicit test provisioning.
-Live tests and host backup/SELinux behavior are not yet qualified for dev11.
+Live tests and host backup/SELinux behavior are not yet qualified for dev12.

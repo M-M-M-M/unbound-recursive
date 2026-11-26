@@ -92,18 +92,18 @@ the initial trust anchor; never overwrite an existing anchor casually.
 | --- | --- | --- | --- | --- |
 | `make stop` | Stopped, retained | Preserved | Preserved | Lost on stop |
 | `make clean` | Removed | Preserved | Preserved | Lost |
-| `make purge` | Removed after confirmation | Deleted in named-volume mode | Preserved, including directory and contents | Lost |
+| `make purge` | Removed after confirmation | Deleted in named-volume mode | `root.key` deleted; directory and other files preserved | Lost |
 
 These Make targets refer to the local development Compose project. The operator
 must identify the correct project and volumes before running destructive commands.
 `purge` requires an interactive terminal and the exact word `PURGE`; it cannot run
 unattended. In named-volume mode it removes all Compose-managed non-external
 volumes in the selected base project, not just the trust anchor. In bind mode
-it runs `down` without `--volumes` and never deletes host files or named volumes. It is not a routine production operation.
+it stops the service, removes only the regular `root.key` using the restricted non-root helper, then runs `down` without `--volumes`. It does not remove the directory, unrelated files or named volumes. It is not a routine production operation.
 The separate backup directory is not deleted. The resolver is unavailable until
 restarted, and external InfluxDB data is unaffected by these default operations.
 
-After a named-volume purge (or deliberate loss of the bind anchor), a fresh state directory is initialized from the Debian root.key shipped
+After a purge in either mode, a fresh state directory is initialized from the Debian root.key shipped
 with the selected image. Normal resolution may recover immediately with a current
 valid anchor, but RFC 5011 rollover observations and hold-down history are lost.
 With a stale or inappropriate anchor, validation can fail (`SERVFAIL`) for signed

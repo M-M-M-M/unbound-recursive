@@ -87,14 +87,24 @@ my $success = eval {
     unlike(dc('ps', '-q', 'unbound'), qr/\S/, 'restore does not start service');
     checked(state_op('backup'), 'backup after clean restore');
     verify_backups($expected);
-    confirm_op('purge', 'PURGE');
     if ($bind) {
-        ok(-d $bind_dir, 'purge preserves bind directory');
-        # Read and remove only the known anchor in this disposable lab to simulate loss.
         my @helper = ('docker','run','--rm','--pull','never','--network','none','--user','10001:10001','--cap-drop','ALL','--security-opt','no-new-privileges:true','--read-only','--no-healthcheck','--mount',"type=bind,source=$bind_dir,target=/state",'--entrypoint','/bin/sh',$image);
-        is(checked(run_command([@helper,'-c','cat /state/root.key']), 'read preserved bind anchor'), $expected, 'purge preserves exact bind anchor');
-        checked(run_command([@helper,'-c','rm /state/root.key']), 'simulate loss in disposable bind fixture');
-    } else { ok(!volume_exists(), 'purge removes test volume'); }
+        checked(run_command([@helper,'-eu','-c','mv /state/root.key /state/sentinel; ln -s sentinel /state/root.key']), 'prepare symlink refusal fixture');
+        my $refused = confirm_command($script, 'purge', 'PURGE');
+        isnt($refused->{code}, 0, 'purge refuses symlink anchor');
+        checked(run_command([@helper,'-eu','-c','test -L /state/root.key; test -f /state/sentinel; rm /state/root.key; cp /state/sentinel /state/root.key']), 'symlink and target preserved');
+        dc('down'); # Also test purge after clean with no existing service.
+        confirm_op('purge', 'PURGE');
+        ok(-d $bind_dir, 'purge preserves bind directory');
+        checked(run_command([@helper,'-eu','-c','test ! -e /state/root.key; test ! -L /state/root.key']), 'bind anchor absent');
+        pass('purge deletes bind anchor');
+        is(checked(run_command([@helper,'-c','cat /state/sentinel']), 'read unrelated file'), $expected, 'purge preserves unrelated file');
+        confirm_op('purge', 'PURGE'); # Missing anchor is an idempotent no-op.
+        pass('repeated bind purge succeeds');
+    } else {
+        confirm_op('purge', 'PURGE');
+        ok(!volume_exists(), 'purge removes test volume');
+    }
     unlike(dc('ps', '-a', '-q', 'unbound'), qr/\S/, 'purge removes test container');
     make_path("$dir/bad");
     write_bytes("$dir/bad/root.key", $expected . 'corrupt');

@@ -4,7 +4,7 @@ A self-hosted recursive DNS resolver based on Unbound and Debian slim. No public
 recursive forwarder is used. The default deployment is private, not a public
 DNS service. DNSSEC authenticates signed DNS data; it does not encrypt recursion.
 
-**Status: 0.1.0-dev11 — optional bind-mounted DNSSEC state and safe storage operations, not production-qualified.**
+**Status: 0.1.0-dev12 — consistent confirmed DNSSEC purge in both storage modes, not production-qualified.**
 Dev6 passed macOS M1 recovery tests; dev7 CI passed functional tests but was
 blocked by four CRITICAL findings. Dev8 replaces the in-container BIND DNS
 client with LDNS drill, retaining Debian upgrades, the CVE policy and empty
@@ -12,7 +12,7 @@ exception register. Dev8 CI passed on both architectures, signed GHCR publicatio
 and operator Cosign verification succeeded. Dev9 pins the tested Debian base,
 adds digest-only update/rollback and stats-file handoff. Dev10 removes the
 GitHub CLI requirement, gates promotion on anonymous Cosign verification and
-adds a manually dispatched live update/rollback qualification. Dev11 adds an optional dedicated host directory for persistent DNSSEC state. Live
+adds a manually dispatched live update/rollback qualification. Dev11 adds an optional dedicated host directory for persistent DNSSEC state. Dev12 makes confirmed purge destroy the active trust anchor in either storage mode. Live
 qualification and host review remain required. DoH,
 DoT, authentication, per-client monitoring and automated blocking remain planned.
 Hardening is mandatory from 0.1.0; the outstanding supply-chain checks are
@@ -56,7 +56,7 @@ make test
 `make stop` stops the local container without removing it. `make clean` removes
 containers and networks but preserves DNSSEC state. `make purge` deletes the
 Compose-managed named volume after interactive confirmation; in bind mode it
-never deletes the host directory, its contents or named volumes. See the
+removes only the active `root.key` and preserves the host directory, unrelated files and named volumes. See the
 [impact and recovery procedure](docs/DEPLOYMENT.md#state-backup-and-restoration).
 To back up an existing local instance, stop it first (do not clean it):
 

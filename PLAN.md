@@ -35,5 +35,5 @@ and [TODO](TODO.md) for acceptance and prioritized work.
   and tests before accepting; configuration/state migrations require review.
 
 - Keep named-volume compatibility; prefer a dedicated bind directory where host
-  backup integration is required. Purge must never delete host files. Validate
+  backup integration is required. Confirmed purge destroys the active trust anchor in both modes; in bind mode it deletes only root.key, never the directory or unrelated files. Validate
   both state profiles and migrations before release.

@@ -7,6 +7,15 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 
 ## [Unreleased]
 
+### Changed (dev12)
+
+- Make confirmed purge destroy active DNSSEC state in both storage modes.
+  Bind purge stops the resolver and removes only root.key via the constrained
+  non-root helper, preserving the directory, unrelated files and backups.
+  Refuse unsafe anchor types, mount mismatches and active shared mounts.
+- Add simulated regressions and extend the live bind recovery lab with
+  symlink refusal, actual deletion, unrelated file retention and repeated purge.
+
 ### Added (dev11)
 
 - Optional dedicated host bind directory for `/state`, preserving named-volume

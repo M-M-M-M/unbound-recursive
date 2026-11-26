@@ -1,4 +1,4 @@
-# Verified image updates and rollback (dev11)
+# Verified image updates and rollback (dev12)
 
 This is an operator-only helper for the **default loopback profile**, with the
 same Compose file and DNSSEC state schema across versions. Not an unattended

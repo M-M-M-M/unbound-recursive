@@ -238,3 +238,17 @@ review both native CI jobs. Verify exact anchor bytes survive bind-mode purge,
 corrupt restore creates no container, and recovery after simulated anchor loss
 works. Qualify Docker Desktop mapping, Linux SELinux/UID ownership, signed
 update/rollback with unchanged storage and the manual migration runbook.
+
+## dev12 consistent purge qualification
+
+The simulated state suite exercises bind cancellation, stop-before-delete,
+shared mount refusal, helper failure, preservation of backups and unrelated
+files, and purge after clean. Run the real bind lab to verify symlink refusal,
+actual anchor deletion, preservation of a sentinel, repeated purge and recovery.
+The dev11 results above are historical; dev12 intentionally changes bind purge
+semantics. Docker live qualification remains pending.
+
+Preparation evidence: `make test-unit` passed 182 assertions under Linux
+(61 state-mock assertions, 18 more than dev11). Shell syntax and the live TAP
+file compile successfully. Docker is not available in the preparation runtime;
+no live bind or volume tests were executed for dev12.
