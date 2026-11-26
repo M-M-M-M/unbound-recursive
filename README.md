@@ -4,7 +4,7 @@ A self-hosted recursive DNS resolver based on Unbound and Debian slim. No public
 recursive forwarder is used. The default deployment is private, not a public
 DNS service. DNSSEC authenticates signed DNS data; it does not encrypt recursion.
 
-**Status: 0.1.0-dev10 — Cosign-only verification and disposable deployment qualification, not production-qualified.**
+**Status: 0.1.0-dev11 — optional bind-mounted DNSSEC state and safe storage operations, not production-qualified.**
 Dev6 passed macOS M1 recovery tests; dev7 CI passed functional tests but was
 blocked by four CRITICAL findings. Dev8 replaces the in-container BIND DNS
 client with LDNS drill, retaining Debian upgrades, the CVE policy and empty
@@ -12,7 +12,7 @@ exception register. Dev8 CI passed on both architectures, signed GHCR publicatio
 and operator Cosign verification succeeded. Dev9 pins the tested Debian base,
 adds digest-only update/rollback and stats-file handoff. Dev10 removes the
 GitHub CLI requirement, gates promotion on anonymous Cosign verification and
-adds a manually dispatched live update/rollback qualification. Live
+adds a manually dispatched live update/rollback qualification. Dev11 adds an optional dedicated host directory for persistent DNSSEC state. Live
 qualification and host review remain required. DoH,
 DoT, authentication, per-client monitoring and automated blocking remain planned.
 Hardening is mandatory from 0.1.0; the outstanding supply-chain checks are
@@ -54,8 +54,9 @@ make test
 ```
 
 `make stop` stops the local container without removing it. `make clean` removes
-containers and networks but preserves the DNSSEC state volume. Only `make purge`
-removes the volume, after interactive confirmation; see the
+containers and networks but preserves DNSSEC state. `make purge` deletes the
+Compose-managed named volume after interactive confirmation; in bind mode it
+never deletes the host directory, its contents or named volumes. See the
 [impact and recovery procedure](docs/DEPLOYMENT.md#state-backup-and-restoration).
 To back up an existing local instance, stop it first (do not clean it):
 
@@ -68,11 +69,22 @@ make start
 Backups default to the ignored `backups/` directory for local tests; use an
 approved protected external backup location in production. `make restore-state`
 requires `BACKUP_SET` and explicit confirmation; it can recreate a stopped
-container and volume without starting the resolver. Use `make test-state`
+container and state mount without starting the resolver. Use `make test-state`
 (Perl and `prove`) to exercise destructive recovery in a disposable Compose project. The healthcheck uses `drill` from Debian `ldnsutils` to test a local record,
 not upstream reachability. The integration script tests UDP, TCP, live DNSSEC
 and cache behavior and rejects installed BIND, LMDB or libxml2 packages.
 `dig` remains optional on the host; it is not shipped in the image.
+
+### Optional host-directory state
+
+A named volume remains the backward-compatible default. For ordinary host
+backups, prefer a dedicated local bind mount: set `DNSSEC_STATE_SOURCE` in your
+private `.env` to the absolute canonical path of a pre-created, protected
+directory writable by container UID/GID 10001. Run `./scripts/state.sh check`
+before direct Compose starts; `make start` runs this check automatically. See
+[storage setup and migration](docs/STATE-STORAGE.md) for Linux, Docker Desktop,
+backup, purge semantics and tests. Never mount broad host directories.
+
 
 ## Deployment and operations
 

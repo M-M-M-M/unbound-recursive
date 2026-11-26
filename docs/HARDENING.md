@@ -54,3 +54,10 @@ review of its purpose, reachable code, vulnerability exposure and updated
 policy tests. The full Trivy gate remains mandatory; a smaller dependency
 set is not proof of absence of vulnerabilities. Review the per-architecture
 SBOM and image-size evidence before promotion.
+
+## Bind-state option (dev11)
+
+Use only a dedicated protected host directory for `/state`, no other host bind
+mounts in the supported private profile. Review UID mapping, parent ownership
+and SELinux; check the actual mount source, preserve non-root execution, and
+qualify backup, recovery and migration before release. See [storage](STATE-STORAGE.md).

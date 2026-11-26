@@ -10,9 +10,9 @@ Once action is done, remove the priority number.
 - [ ] Review all remaining HIGH CVEs and reachable code; LDNS CVE-2026-10846 initial triage recorded; no exceptions. 0️⃣
 - [ ] Review full host hardening reference, pinned Actions and transitive installers; qualify pinned base refresh and dev10 build. 1️⃣
 - [ ] Qualify dev10 anonymous consumer gate, provenance and both platform SBOM verifications; run revised scheduled/manual re-scan. 2️⃣
-- [ ] Qualify dev10 on macOS M1, both CI architectures and Linux amd64 production-like host. 3️⃣
+- [ ] Qualify dev11 on macOS M1, both CI architectures and Linux amd64 production-like host. 3️⃣
 - [ ] Verify non-root effective privileges, protected deployment paths, SELinux, resource limits, firewall and Docker routes. 4️⃣
-- [ ] Verify first-start state permissions, trust anchor persistence/rollover and restart. 5️⃣
+- [ ] Verify both state backends: native bind and volume recovery, Linux numeric ownership/SELinux, Docker Desktop UID mapping, trust anchor persistence/rollover, migration and restart. 5️⃣
 - [ ] Probe IPv4/IPv6 exposure and unauthorized isolated lab clients; check source-IP NAT behavior. 6️⃣
 - [ ] Audit installed package inventory; run dev10 manual live deployment qualification on both native CI runners and isolated host, including failure recovery. 7️⃣
 - [ ] Qualify stats-only collection, Telegraf, InfluxDB and Grafana including stale data alerts. 8️⃣
@@ -51,3 +51,5 @@ Once action is done, remove the priority number.
 - [x] Implement core Perl verified update/rollback and stats-only file export with offline TAP tests; live operator qualification remains pending.
 
 - [x] Remove GitHub CLI from verification; enforce an actual image signature, exact identity, signed hosted-runner provenance policy and per-platform SBOMs using Cosign; add anonymous pre-promotion gate and opt-in live update/rollback qualification (dev10; live checks pending).
+
+- [x] Add optional dedicated bind-state source, preflight and mount mismatch guards, non-destructive bind purge, backup/restore support, and native CI bind lab (dev11; offline tests pass, live qualification pending).

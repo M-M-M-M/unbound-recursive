@@ -13,7 +13,7 @@ services:
       - /run/resolver:uid=10001,gid=10001,mode=0750,size=1m
       - /tmp:uid=10001,gid=10001,mode=0700,size=16m
     volumes:
-      - state:/state
+      - ${DNSSEC_STATE_SOURCE:-state}:/state
     networks:
       - resolver
     mem_limit: 512m

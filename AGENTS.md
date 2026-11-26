@@ -224,3 +224,12 @@ POSIX sh. Do not introduce Python or external Perl modules without explicit
 justification and owner approval. Use Test::More and prove for TAP tests.
 Offline tests must not require Docker or Internet access. Docker integration
 and destructive recovery require explicit opt-in and disposable test resources.
+
+## State storage and public/private boundary
+
+Support the named-volume default and an explicit dedicated host directory.
+Never recursively delete host paths or silently migrate state. Preserve numeric
+ownership, backup integrity, and non-root execution in both profiles. Do not
+include private host names, IPs, domain names, credentials, private paths,
+operator-specific commands or unredacted logs in public artifacts. Private
+development rules are maintained separately; do not copy them into this tree.

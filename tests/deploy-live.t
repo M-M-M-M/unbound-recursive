@@ -17,7 +17,7 @@ plan skip_all => 'explicit RUN_DEPLOY_LIVE=1 and two signed digests required (di
 my ($old, $new) = @ENV{qw(PREVIOUS_DIGEST CANDIDATE_DIGEST)};
 for ($old, $new) { defined && /\Asha256:[a-f0-9]{64}\z/ or BAIL_OUT('invalid digest input'); }
 $old ne $new or BAIL_OUT('two distinct digests required');
-for (keys %ENV) { /\A(?:COMPOSE_.*|UNBOUND_IMAGE|DNS_PORT)\z/ and BAIL_OUT("unset $_ before lab test"); }
+for (keys %ENV) { /\A(?:COMPOSE_.*|UNBOUND_IMAGE|DNS_PORT|DNSSEC_STATE_SOURCE)\z/ and BAIL_OUT("unset $_ before lab test"); }
 my $source = abs_path("$FindBin::Bin/..");
 my $cwd = getcwd();
 # Random Compose project name from directory basename. Fixed subnet/port in the

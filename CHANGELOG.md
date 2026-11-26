@@ -7,6 +7,19 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 
 ## [Unreleased]
 
+### Added (dev11)
+
+- Optional dedicated host bind directory for `/state`, preserving named-volume
+  compatibility. Add mount preflight, source checks and bind-mode recovery lab.
+- Support stopped bind state backup/restore using the constrained helper. Keep
+  the host directory and all volumes on confirmed bind-mode purge; never delete
+  arbitrary host paths. Reject mismatched mounts and implicit storage migrations.
+- Permit a fixed state source in verified image updates, record it in the local
+  deployment journal and refuse unexpected changes. Document storage setup,
+  migration, backup, SELinux and Docker Desktop qualification.
+- Add offline TAP regressions and native CI bind-state recovery coverage. Real
+  bind mount, macOS mapping and Linux deployment remain to be qualified.
+
 ### Changed (dev10)
 
 - Replace GitHub CLI verification with Cosign 3.1.4 for signatures, index

@@ -29,3 +29,7 @@ backup/restore and safe telemetry. See [hardening](HARDENING.md). Only then
 consider service exposure. Full hardening reference is still
 needed for final review. The optional monitoring socket grants administration;
 explicit approval or a statistics-only design is required before enabling it.
+
+Dev11 adds an optional host directory for DNSSEC state; it must follow approved
+local placement, permissions, backup retention and recovery rules. Named and
+bind profiles require independent qualification; see [state storage](STATE-STORAGE.md).

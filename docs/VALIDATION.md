@@ -228,3 +228,13 @@ consumer verification job succeeds before `latest` moves. Run the manual
 manifest digests; see [upgrading](UPGRADING.md). This also checks the stats-file
 export against real Unbound output; it does not qualify Telegraf or Grafana.
 No CVE policy or exception change has been made.
+
+## dev11 storage qualification
+
+Offline `make test-unit` passed 164 assertions under Linux (14 new state
+assertions). No Docker daemon is available in the preparation environment.
+Run `make test-state` and `make test-state-bind` in a disposable local lab and
+review both native CI jobs. Verify exact anchor bytes survive bind-mode purge,
+corrupt restore creates no container, and recovery after simulated anchor loss
+works. Qualify Docker Desktop mapping, Linux SELinux/UID ownership, signed
+update/rollback with unchanged storage and the manual migration runbook.

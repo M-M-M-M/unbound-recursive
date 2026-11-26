@@ -1,4 +1,4 @@
-# Verified image updates and rollback (dev10)
+# Verified image updates and rollback (dev11)
 
 This is an operator-only helper for the **default loopback profile**, with the
 same Compose file and DNSSEC state schema across versions. Not an unattended
@@ -19,8 +19,12 @@ Run from a protected, operator-owned directory containing the reviewed
 `compose.yaml`, `scripts/` and `tests/` of this revision. All files/parents
 must be trusted and not writable by application accounts. `.env` must be a
 regular operator-owned file, not group/world writable (0600 recommended),
-containing only literal `UNBOUND_IMAGE` and optional `DNS_PORT` assignments,
-blank lines and comments. No Compose environment overrides are accepted by
+containing only literal `UNBOUND_IMAGE`, optional `DNS_PORT` and optional
+`DNSSEC_STATE_SOURCE` assignments,
+blank lines and comments. `DNSSEC_STATE_SOURCE` must be `state` (default) or
+a pre-created absolute canonical protected path without spaces. Keep the source
+unchanged for an image-only update or rollback. See [storage](STATE-STORAGE.md).
+No Compose environment overrides are accepted by
 the update helper. Set an existing protected absolute `BACKUP_DIR` (operator
 owned, no group/world write). Keep it outside the repository on production.
 The journal and lock stay local; serialize all operational actions, including
@@ -53,6 +57,7 @@ line with the approved exact reference printed above; chmod 0600. Ensure
 no conflicting Compose environment variables. After preflight:
 
 ```sh
+./scripts/state.sh check
 docker compose -f compose.yaml config --quiet
 docker compose -f compose.yaml pull
 docker compose -f compose.yaml up -d --wait --no-build --pull never
@@ -71,7 +76,7 @@ export BACKUP_DIR=/path/to/approved/backups
 ```
 
 The helper rejects tags for update, concurrent/stale locks, inconsistent journal
-or configuration, unsafe `.env`, and an unexpected running image ID. It verifies
+or configuration, an altered storage source, unsafe `.env`, and an unexpected running image ID. It verifies
 both candidate and previous signed images, downloads both by digest before
 stopping, records a pending local journal, stops and backs up DNSSEC, starts
 the candidate without pull/build, checks its exact running image ID and health,
@@ -80,7 +85,7 @@ pass, and records the prior digest in `.deployment-state.json`. It never
 purges volumes or modifies firewall/host DNS. Each server is updated separately.
 
 On a failed application it attempts to restart and test the previously verified
-image, preserving the state volume, restores the original `.env`, records the
+image, preserving the state storage, restores the original `.env`, records the
 rollback outcome and returns nonzero. This automatic rollback is **image-only**:
 it assumes the state/config schema is compatible. It never silently restores
 or resets a trust anchor. Review and test a coherent state recovery separately
@@ -108,9 +113,9 @@ file replacement is not a guarantee of durability after host/power failure.
 ## Qualification before production
 
 - `prove -v tests/deploy.t` tests orchestration using mocked tools (no Docker).
-- Once dev10 is published, dispatch **Qualify signed deployment and rollback**
+- Once a newer candidate is published, dispatch **Qualify signed deployment and rollback**
   on `main` in GitHub Actions. Supply two distinct signed, approved manifest
-  digests (for example dev8 and dev10, only if both pass the new verifier).
+  digests (for example dev8 and the newer candidate, only if both pass the new verifier).
   The read-only workflow runs on fresh native amd64/arm64 runners. It exercises
   install, deliberate acceptance-test failure and automatic rollback, successful
   update, backup checksum, real stats export, manual rollback and final integration.

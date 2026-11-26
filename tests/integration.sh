@@ -25,10 +25,14 @@ docker inspect -f '{{json .HostConfig.SecurityOpt}}' "$id" | grep -q 'no-new-pri
 [ "$(docker inspect -f '{{.HostConfig.PidMode}}' "$id")" != host ] || fail 'host PID namespace'
 [ "$(docker inspect -f '{{.HostConfig.NetworkMode}}' "$id")" != host ] || fail 'host network namespace'
 [ "$(docker inspect -f '{{.HostConfig.IpcMode}}' "$id")" != host ] || fail 'host IPC namespace'
-# Default profile must have no bind mounts (including Docker or control sockets).
-# The optional monitoring override requires its own explicit security review.
-mount_types=$(docker inspect -f '{{range .Mounts}}{{println .Type}}{{end}}' "$id")
-if printf '%s\n' "$mount_types" | grep -qx bind; then fail 'unexpected bind mount in default profile'; fi
+# Only /state may be a bind mount. Check its actual source against resolved Compose.
+# The optional administrative control socket profile requires separate review.
+config=$(docker compose config --format json) || fail 'Compose configuration'
+expected=$(printf '%s' "$config" | perl -MJSON::PP -e 'local $/; my $c=decode_json(<STDIN>); my @m=grep { ($_->{target}//q{}) eq q{/state} } @{$c->{services}{unbound}{volumes}//[]}; @m==1 or die; my ($t,$s)=@{$m[0]}{qw(type source)}; if ($t eq q{volume}) {$s=$c->{volumes}{$s}{name}//die} elsif ($t ne q{bind}) {die}; print "$t:$s"') || fail 'expected state mount'
+actual=$(docker inspect -f '{{range .Mounts}}{{if eq .Destination "/state"}}{{.Type}}:{{if eq .Type "volume"}}{{.Name}}{{else}}{{.Source}}{{end}}{{end}}{{end}}' "$id")
+[ "$actual" = "$expected" ] || fail 'unexpected state mount source'
+other=$(docker inspect -f '{{range .Mounts}}{{if and (eq .Type "bind") (ne .Destination "/state")}}{{println .Destination}}{{end}}{{end}}' "$id")
+[ -z "$other" ] || fail 'unexpected additional bind mount' 
 # Both bindings must be loopback, without public IPv4/IPv6 publication.
 for proto in udp tcp; do
     binding=$(docker port "$id" "5353/$proto")

@@ -1,10 +1,11 @@
 COMPOSE = docker compose -f compose.yaml -f compose.build.yaml
 export BACKUP_DIR
 export BACKUP_SET
-.PHONY: build start test logs stop restart clean purge stats backup-state restore-state test-state test-unit test-all
+.PHONY: build start test logs stop restart clean purge stats backup-state restore-state test-state test-state-bind test-unit test-all
 build:
 	$(COMPOSE) build --pull --no-cache
 start:
+	UNBOUND_IMAGE=unbound-recursive:dev ./scripts/state.sh check
 	$(COMPOSE) up -d --wait
 # Tests use the same Compose project; no host dig dependency.
 test:
@@ -16,6 +17,7 @@ stats:
 stop:
 	$(COMPOSE) stop
 restart:
+	UNBOUND_IMAGE=unbound-recursive:dev ./scripts/state.sh check
 	$(COMPOSE) restart unbound
 clean:
 	$(COMPOSE) down
@@ -29,5 +31,7 @@ test-unit:
 	RUN_DOCKER_TESTS=0 prove -v tests/vulnerability-gate.t tests/state-mock.t tests/confirmation.t tests/healthcheck.t tests/package-policy.t tests/deploy.t tests/export-stats.t
 test-state:
 	RUN_DOCKER_TESTS=1 prove -v tests/state-live.t
+test-state-bind:
+	RUN_DOCKER_TESTS=1 TEST_STATE_MODE=bind prove -v tests/state-live.t
 test-all:
 	RUN_DOCKER_TESTS=1 prove -v tests/*.t

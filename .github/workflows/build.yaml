@@ -47,6 +47,7 @@ jobs:
           docker compose up -d --wait
           make test
           make test-state
+          TEST_BIND_PROVISION=1 make test-state-bind
       - name: Diagnostics and cleanup
         if: always()
         run: |

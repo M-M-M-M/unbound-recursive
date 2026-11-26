@@ -11,7 +11,7 @@ For a future HTTP service, follow the local hosting path convention (including
 Use the existing ops administrative mechanism with actual approved privileges.
 Docker access is effectively host administration; no application user joins its
 group or receives its socket. Check Docker/Compose versions, architecture,
-SELinux, available UID/GID and numeric volume ownership, resource budget, NTP,
+SELinux, available UID/GID and numeric state storage ownership, resource budget, NTP,
 port collisions, bridge conflicts, outbound TCP/UDP 53 and firewall policy.
 Example commands for an authorized Linux operator: `ss -lntup`, `ip route`,
 `docker network ls`, `docker compose version`, `getenforce` (if available).
@@ -88,21 +88,22 @@ the initial trust anchor; never overwrite an existing anchor casually.
 
 ### Impact of cleanup and purge
 
-| Operation | Containers and their logs | DNSSEC named volume | Cache |
-| --- | --- | --- | --- |
-| `make stop` | Stopped, retained | Preserved | Lost on stop |
-| `make clean` | Removed | Preserved | Lost |
-| `make purge` | Removed after confirmation | Deleted | Lost |
+| Operation | Containers and their logs | DNSSEC named volume | Bind-mounted state | Cache |
+| --- | --- | --- | --- | --- |
+| `make stop` | Stopped, retained | Preserved | Preserved | Lost on stop |
+| `make clean` | Removed | Preserved | Preserved | Lost |
+| `make purge` | Removed after confirmation | Deleted in named-volume mode | Preserved, including directory and contents | Lost |
 
 These Make targets refer to the local development Compose project. The operator
 must identify the correct project and volumes before running destructive commands.
 `purge` requires an interactive terminal and the exact word `PURGE`; it cannot run
-unattended. It removes all Compose-managed non-external volumes in the selected
-base project, not just the trust anchor. It is not a routine production operation.
+unattended. In named-volume mode it removes all Compose-managed non-external
+volumes in the selected base project, not just the trust anchor. In bind mode
+it runs `down` without `--volumes` and never deletes host files or named volumes. It is not a routine production operation.
 The separate backup directory is not deleted. The resolver is unavailable until
 restarted, and external InfluxDB data is unaffected by these default operations.
 
-After a purge, a fresh volume is initialized from the Debian root.key shipped
+After a named-volume purge (or deliberate loss of the bind anchor), a fresh state directory is initialized from the Debian root.key shipped
 with the selected image. Normal resolution may recover immediately with a current
 valid anchor, but RFC 5011 rollover observations and hold-down history are lost.
 With a stale or inappropriate anchor, validation can fail (`SERVFAIL`) for signed
@@ -114,11 +115,11 @@ and live signed/bogus DNS responses. Update only one resolver at a time.
 
 Use the existing approved backup tooling for configuration, approved image digest,
 local inventory and retention. The supplied operator-only `scripts/state.sh`
-handles the current default profile's named `/state` volume and its only durable
-file, `root.key`. It does not archive cache, logs or secrets. Backup requires an existing stopped container (not `down`); restoration can
+handles the supported named volume or dedicated bind mount at `/state` and its
+only durable file, `root.key`. See [state storage](STATE-STORAGE.md). It does not archive cache, logs or secrets. Backup requires an existing stopped container (not `down`); restoration can
 create one if absent. Both require a trusted local image and a protected
-working directory and backup directory. No root process in the helper, host bind
-mount, network, extra capability or Docker socket is used inside the helper.
+working directory and backup directory. No root process, network, extra capability or Docker socket is used inside the
+helper. It mounts only the identified state storage, read-only for backup.
 The invoking operator must have authorized Docker access. Use a separate procedure
 for deployments with different Compose file sets or state layouts.
 
@@ -146,10 +147,11 @@ requires operator investigation, not automatic removal.
 Restore first in an isolated instance. Stop one resolver, preserve its current
 state if present, and choose an approved backup from that same resolver. Use the
 base profile. If the container was removed, the restore script recreates a
-stopped container and its named volume after validating the backup and receiving
+stopped container and its configured state mount after validating the backup and receiving
 confirmation, using the selected image already present locally. No pull, build
 or resolver start is performed. If the selected image is absent, retrieve and
-verify it separately. For a new volume, confirm numeric ownership and permissions.
+verify it separately. Pre-create a missing bind directory; verify numeric ownership
+and permissions for either storage type.
 
 ```sh
 BACKUP_SET=/path/to/approved/backups/dnssec-<timestamp>-<suffix> ./scripts/state.sh restore

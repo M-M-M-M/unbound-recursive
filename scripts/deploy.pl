@@ -114,7 +114,7 @@ sub env_digest {
     my %seen;
     for my $line (split /\n/, $text) {
         next if $line =~ /\A\s*(?:#.*)?\z/;
-        $line =~ /\A(UNBOUND_IMAGE|DNS_PORT)=(\S+)\z/ or fail('unsupported .env line');
+        $line =~ /\A(UNBOUND_IMAGE|DNS_PORT|DNSSEC_STATE_SOURCE)=(\S+)\z/ or fail('unsupported .env line');
         my ($key, $value) = ($1, $2);
         exists $seen{$key} and fail("duplicate $key");
         $seen{$key} = $value;
@@ -124,6 +124,9 @@ sub env_digest {
     my $d = $1;
     my $port = $seen{DNS_PORT} // '1053';
     $port =~ /\A[0-9]{1,5}\z/ && $port > 0 && $port <= 65535 or fail('invalid DNS_PORT');
+    my $state = $seen{DNSSEC_STATE_SOURCE} // 'state';
+    $state eq 'state' || ($state =~ m{\A/(?:[a-zA-Z0-9_.-]+/)*[a-zA-Z0-9_.-]+\z} && $state !~ m{(?:^|/)\.{1,2}(?:/|$)} && -d $state && !-l $state)
+        or fail('DNSSEC_STATE_SOURCE must be state or a pre-created protected absolute directory');
     return $d;
 }
 sub compose { return ('docker', 'compose', '-f', 'compose.yaml'); }
@@ -158,7 +161,7 @@ sub update {
     my @dir = stat('.');
     $dir[4] == $< && ($dir[2] & 0022) == 0 or fail('deployment directory must be owned by operator and not group/world writable');
     for my $k (keys %ENV) {
-        $k =~ /\A(?:COMPOSE_.*|UNBOUND_IMAGE|DNS_PORT)\z/ and fail("unset $k before deployment");
+        $k =~ /\A(?:COMPOSE_.*|UNBOUND_IMAGE|DNS_PORT|DNSSEC_STATE_SOURCE)\z/ and fail("unset $k before deployment");
     }
     my $backup = $ENV{BACKUP_DIR} // '';
     $backup =~ m{\A/} && -d $backup && !-l $backup or fail('set BACKUP_DIR to an existing protected absolute backup directory');
@@ -169,25 +172,27 @@ sub update {
         my $old_env = read_file('.env');
         my $old = env_digest($old_env);
         my $config_hash = sha256_hex(read_file('compose.yaml'));
+        my $state_source = $old_env =~ /^DNSSEC_STATE_SOURCE=(.+)$/m ? $1 : 'state';
         my $previous;
         if (-e $journal || -l $journal) {
             $previous = decode_json(read_file($journal));
             ref($previous) eq 'HASH' && ($previous->{status} // '') =~ /\A(?:deployed|rolled_back)\z/ or fail('pending/failed journal: investigate manually');
             ($previous->{current} // '') eq $old or fail('journal does not match .env');
             ($previous->{compose_sha256} // '') eq $config_hash or fail('Compose file changed; use reviewed manual migration procedure');
+            ($previous->{state_source} // 'state') eq $state_source or fail('state source changed; use reviewed manual migration procedure');
         }
         my $new = $action eq 'rollback' ? do {
             $previous && $previous->{status} eq 'deployed' && ($previous->{compose_sha256} // '') eq $config_hash or fail('no compatible completed deployment to roll back');
             digest($previous->{previous});
         } : digest($requested);
         $old ne $new or fail('requested digest is already deployed');
-        with_image($old, sub { run(compose(), 'config', '--quiet'); assert_running($old); });
+        with_image($old, sub { run(compose(), 'config', '--quiet'); assert_running($old); run('./scripts/state.sh', 'check'); });
         # Verify both versions and pull them before stopping the current resolver.
         verify($new); verify($old);
         run('docker', 'pull', "$repo\@$new");
         run('docker', 'pull', "$repo\@$old");
         my $record = { status => 'pending', current => $old, previous => $old, candidate => $new,
-            compose_sha256 => $config_hash, backup => '', action => $action };
+            compose_sha256 => $config_hash, state_source => $state_source, backup => '', action => $action };
         atomic_write($journal, encode_json($record) . "\n");
         my $applied = eval {
             with_image($old, sub {

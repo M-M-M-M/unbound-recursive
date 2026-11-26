@@ -33,3 +33,7 @@ and [TODO](TODO.md) for acceptance and prioritized work.
 - Digest updates are initiated by the operator on each host. The operator helper
   verifies signatures/attestations using Cosign without GitHub CLI, records a local journal, backs up DNSSEC
   and tests before accepting; configuration/state migrations require review.
+
+- Keep named-volume compatibility; prefer a dedicated bind directory where host
+  backup integration is required. Purge must never delete host files. Validate
+  both state profiles and migrations before release.
